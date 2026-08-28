@@ -9,7 +9,11 @@ require_relative "lipwa/auth_strategies"
 require_relative "lipwa/http_adapter"
 require_relative "lipwa/capability"
 require_relative "lipwa/gateway"
+require_relative "lipwa/gateways"
 
 # Unified payment gateway abstraction for African payment providers.
 module Lipwa
+  def self.gateway(name)
+    Gateways[name]
+  end
 end
