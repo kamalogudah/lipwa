@@ -6,6 +6,7 @@ require_relative "types"
 require_relative "capability"
 require_relative "auth_strategies"
 require_relative "http_adapter"
+require_relative "configuration"
 
 module Lipwa
   # Abstract base every provider gateway (Mpesa, CoopBank, Jenga, ...)
@@ -18,7 +19,7 @@ module Lipwa
 
     setting :env, default: :sandbox, constructor: Types::Environment
     setting :base_url
-    setting :timeout, default: 10
+    setting :timeout
     setting :open_timeout, default: 5
     setting :logger
     setting :auth_strategy
@@ -57,9 +58,10 @@ module Lipwa
       HttpAdapter.new(
         base_url: config.base_url,
         auth_strategy: config.auth_strategy || AuthStrategies::None.new,
-        timeout: config.timeout,
+        timeout: config.timeout || Lipwa.config.default_timeout,
         open_timeout: config.open_timeout,
-        logger: config.logger
+        logger: config.logger || Lipwa.config.logger,
+        adapter: Lipwa.config.adapter
       )
     end
 

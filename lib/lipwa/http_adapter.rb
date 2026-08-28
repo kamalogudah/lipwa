@@ -22,11 +22,12 @@ module Lipwa
       exceptions: Faraday::Retry::Middleware::DEFAULT_EXCEPTIONS
     }.freeze
 
-    attr_reader :base_url, :auth_strategy, :timeout, :open_timeout, :logger
+    attr_reader :base_url, :auth_strategy, :timeout, :open_timeout, :logger, :adapter
 
     # rubocop:disable Metrics/ParameterLists
     def initialize(base_url:, auth_strategy: AuthStrategies::None.new, timeout: 10,
-                   open_timeout: 5, logger: nil, retry_options: {}, stubs: nil)
+                   open_timeout: 5, logger: nil, retry_options: {}, stubs: nil,
+                   adapter: Faraday.default_adapter)
       @base_url = base_url
       @auth_strategy = auth_strategy
       @timeout = timeout
@@ -34,6 +35,7 @@ module Lipwa
       @logger = logger
       @retry_options = DEFAULT_RETRY_OPTIONS.merge(retry_options)
       @stubs = stubs
+      @adapter = adapter
     end
     # rubocop:enable Metrics/ParameterLists
 
@@ -70,7 +72,7 @@ module Lipwa
       @connection ||= Faraday.new(url: base_url) do |conn|
         configure_middleware(conn)
         configure_timeouts(conn)
-        @stubs ? conn.adapter(:test, @stubs) : conn.adapter(Faraday.default_adapter)
+        @stubs ? conn.adapter(:test, @stubs) : conn.adapter(@adapter)
       end
     end
 
