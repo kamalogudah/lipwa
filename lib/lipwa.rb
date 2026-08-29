@@ -11,7 +11,9 @@ require_relative "lipwa/configuration"
 require_relative "lipwa/capability"
 require_relative "lipwa/gateway"
 require_relative "lipwa/gateways"
-require_relative "lipwa/gateways/mpesa/auth"
+require_relative "lipwa/contracts/stk_push_contract"
+require_relative "lipwa/capabilities/stk_push"
+require_relative "lipwa/gateways/mpesa"
 
 # Unified payment gateway abstraction for African payment providers.
 module Lipwa
