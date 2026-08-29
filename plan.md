@@ -94,6 +94,7 @@ Capability modules (each with its own request/response Structs + contract):
 | `BankTransfer`          | `#transfer`, `#balance`, `#statement` | Co-op Bank, Jenga |
 | `StatusQuery`           | `#status`                           | all async flows |
 | `WebhookHandling`       | `.parse_webhook`, `#verify_signature` | M-Pesa, Co-op, Jenga |
+| `LightningInvoice`      | `#create_invoice`, `#check_invoice` | LNbits |
 
 ## 4. Directory structure
 
@@ -150,6 +151,17 @@ test/
   async confirmation via webhook for anything collection-related. This is
   why `HttpAdapter` needs pluggable auth strategies and `Webhook` needs
   pluggable signature verification, rather than being M-Pesa-specific.
+- **LNbits (Bitcoin Lightning Network)** — self-hosted or hosted instance,
+  plain REST/JSON API, static `X-Api-Key` header auth (no OAuth, no request
+  signing). Invoices are BOLT11-denominated in satoshis, not ISO-4217
+  currency. No gRPC/websocket streaming needed (unlike talking to a raw
+  LND/CLN node directly) — this is why it was picked as the first Lightning
+  backend: it fits the existing `HttpAdapter`/`AuthStrategies` shape with no
+  new dependencies. LNbits does not sign its outbound payment webhooks, so
+  verification uses an integrator-minted shared-secret token embedded in the
+  webhook URL rather than an HMAC (see `LightningInvoice` capability notes).
+  A raw LND/CLN gateway (gRPC + macaroon auth + `SubscribeInvoices` streaming)
+  is a possible future gateway but is out of scope for now.
 
 ## 6. Example usage (target API)
 
@@ -235,6 +247,13 @@ event = Lipwa::Gateways::Mpesa.parse_webhook(request.body.read, headers: request
 7. **Card rails (stretch)** — Pesapal / Flutterwave / Paystack as
    `Purchase`/`Authorize`/`Capture`/`Void` implementers, proving the
    capability model also covers the ActiveMerchant-shaped case.
+8. **Lightning Network (LNbits), receive-only** — new `AuthStrategies::ApiKey`,
+   `LightningInvoice` capability (`#create_invoice`, `#check_invoice`),
+   `Lipwa::Gateways::Lnbits`, `Lipwa::Webhooks::Lnbits` (shared-secret-token
+   verification, no HMAC available from LNbits). Proves the capability model
+   also covers a non-fiat, non-ISO-4217 rail. Outbound `pay_invoice` (spending
+   sats, needs the LNbits admin/full key rather than invoice/read) is a
+   later phase, not v1.
 
 ## 11. Decisions
 
@@ -247,7 +266,17 @@ event = Lipwa::Gateways::Mpesa.parse_webhook(request.body.read, headers: request
 
 - Sync vs. async webhook story: does the gem ship a Rack/Rails-agnostic
   webhook *parser* only (current plan), or also engine/controller helpers?
+  **Resolved for LNbits**: parser-only, same as M-Pesa — no Rack/Rails
+  controller helper is being added for this gateway either. Still an open
+  question for whether the gem ever adds one generically.
 - Multi-tenant credentials: is per-process global gateway config
   (`Dry::Configurable` class-level) sufficient, or do we need per-instance
   configured gateway objects for apps serving multiple merchants/accounts
   from one process?
+- LNbits webhook trust model: since LNbits doesn't HMAC-sign webhooks, v1
+  uses an integrator-minted shared-secret token embedded in the `webhook_url`
+  itself, verified via constant-time comparison, with `#check_invoice`
+  required as an independent re-verification before crediting payment. Revisit
+  if a future LNbits version/extension adds real HMAC signing — `WebhookEvent#verify_signature`
+  already accepts provider-specific `**opts`, so a second verification mode
+  could be added without an interface change.
