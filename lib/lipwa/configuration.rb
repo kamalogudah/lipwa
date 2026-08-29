@@ -3,6 +3,7 @@
 require "faraday"
 require "dry/configurable"
 
+# Unified payment gateway abstraction for African payment providers.
 module Lipwa
   extend Dry::Configurable
 
