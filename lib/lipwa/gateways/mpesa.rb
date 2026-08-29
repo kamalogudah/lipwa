@@ -3,6 +3,7 @@
 require_relative "../gateway"
 require_relative "../gateways"
 require_relative "../capabilities/c2b"
+require_relative "../capabilities/stk_push"
 
 module Lipwa
   module Gateways
@@ -12,10 +13,12 @@ module Lipwa
     # per environment.
     class Mpesa < Lipwa::Gateway
       include Lipwa::Capabilities::C2B
+      include Lipwa::Capabilities::StkPush
 
       setting :consumer_key
       setting :consumer_secret
       setting :shortcode
+      setting :passkey
 
       private
 
@@ -42,10 +45,10 @@ module Lipwa
       end
 
       def ensure_mpesa_config_present!(config)
-        return if config.consumer_key && config.consumer_secret && config.shortcode
+        return if config.consumer_key && config.consumer_secret && config.shortcode && config.passkey
 
         raise Lipwa::ConfigurationError,
-              "#{self.class} is missing consumer_key/consumer_secret/shortcode — set them via .configure"
+              "#{self.class} is missing consumer_key/consumer_secret/shortcode/passkey — set them via .configure"
       end
     end
   end

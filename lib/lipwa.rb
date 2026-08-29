@@ -14,6 +14,8 @@ require_relative "lipwa/gateways"
 require_relative "lipwa/contracts/c2b_register_urls_contract"
 require_relative "lipwa/contracts/c2b_simulate_contract"
 require_relative "lipwa/capabilities/c2b"
+require_relative "lipwa/contracts/stk_push_contract"
+require_relative "lipwa/capabilities/stk_push"
 require_relative "lipwa/gateways/mpesa"
 
 # Unified payment gateway abstraction for African payment providers.
