@@ -26,3 +26,21 @@ VCR.configure do |config|
 end
 
 WebMock.disable_net_connect!(allow_localhost: true)
+
+# A throwaway self-signed cert, generated once per test run, standing in
+# for Safaricom's public B2C/B2B cert so Disbursement/SecurityCredential
+# specs can encrypt without needing a real Daraja certificate on disk.
+TEST_MPESA_CERT = begin
+  key = OpenSSL::PKey::RSA.new(2048)
+  name = OpenSSL::X509::Name.parse("/CN=lipwa-test")
+  cert = OpenSSL::X509::Certificate.new
+  cert.version = 2
+  cert.serial = 1
+  cert.subject = name
+  cert.issuer = name
+  cert.public_key = key.public_key
+  cert.not_before = Time.now
+  cert.not_after = Time.now + 3600
+  cert.sign(key, OpenSSL::Digest.new("SHA256"))
+  cert.to_pem
+end.freeze
