@@ -5,6 +5,7 @@ require_relative "../gateways"
 require_relative "../capabilities/c2b"
 require_relative "../capabilities/stk_push"
 require_relative "../capabilities/disbursement"
+require_relative "../capabilities/status_query"
 
 module Lipwa
   module Gateways
@@ -16,6 +17,7 @@ module Lipwa
       include Lipwa::Capabilities::C2B
       include Lipwa::Capabilities::StkPush
       include Lipwa::Capabilities::Disbursement
+      include Lipwa::Capabilities::StatusQuery
 
       setting :consumer_key
       setting :consumer_secret
