@@ -20,6 +20,8 @@ require_relative "lipwa/contracts/stk_push_contract"
 require_relative "lipwa/capabilities/stk_push"
 require_relative "lipwa/contracts/disbursement_contract"
 require_relative "lipwa/capabilities/disbursement"
+require_relative "lipwa/contracts/status_query_contract"
+require_relative "lipwa/capabilities/status_query"
 require_relative "lipwa/gateways/mpesa"
 
 # Unified payment gateway abstraction for African payment providers.

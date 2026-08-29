@@ -33,6 +33,32 @@ module Lipwa
         }
       }.freeze
 
+      TRANSACTION_STATUS_RESULT_SUCCESS = {
+        "Result" => {
+          "ResultType" => 0,
+          "ResultCode" => 0,
+          "ResultDesc" => "The service request has been accepted successfully.",
+          "OriginatorConversationID" => "12362-3240472-1",
+          "ConversationID" => "AG_20180402_00004a92452ef78e864d",
+          "TransactionID" => "OEI2AK4Q16",
+          "ResultParameters" => {
+            "ResultParameter" => [
+              { "Key" => "TransactionStatus", "Value" => "Completed" }
+            ]
+          }
+        }
+      }.freeze
+
+      TRANSACTION_STATUS_RESULT_FAILURE = {
+        "Result" => {
+          "ResultType" => 0,
+          "ResultCode" => 1,
+          "ResultDesc" => "The initiator information is invalid.",
+          "OriginatorConversationID" => "12362-3240472-1",
+          "ConversationID" => "AG_20180402_00004a92452ef78e864d"
+        }
+      }.freeze
+
       C2B_CONFIRMATION = {
         "TransactionType" => "Pay Bill",
         "TransID" => "RKTQDM7108",
@@ -58,6 +84,25 @@ module Lipwa
         event = result.value!
         refute event.success?
         assert_equal "Request cancelled by user.", event.message
+      end
+
+      def test_parses_transaction_status_result_as_success
+        result = Lipwa::Webhook.parse_webhook(provider: :mpesa, body: TRANSACTION_STATUS_RESULT_SUCCESS)
+
+        event = result.value!
+        assert event.success?
+        assert_equal :transaction_status, event.event_type
+        assert_equal "OEI2AK4Q16", event.provider_reference
+        assert_equal "The service request has been accepted successfully.", event.message
+      end
+
+      def test_parses_transaction_status_result_as_failure_on_non_zero_result_code
+        result = Lipwa::Webhook.parse_webhook(provider: :mpesa, body: TRANSACTION_STATUS_RESULT_FAILURE)
+
+        event = result.value!
+        refute event.success?
+        assert_equal "AG_20180402_00004a92452ef78e864d", event.provider_reference
+        assert_equal "The initiator information is invalid.", event.message
       end
 
       def test_parses_c2b_payload_as_a_c2b_event
