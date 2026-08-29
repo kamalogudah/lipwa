@@ -55,7 +55,7 @@ module Lipwa
       def perform_register_urls(params)
         response = http.post(REGISTER_URLS_PATH, body: register_urls_body(params))
 
-        build_response(response.body)
+        build_c2b_response(response.body)
       rescue Lipwa::GatewayError => e
         Failure(e)
       end
@@ -72,7 +72,7 @@ module Lipwa
       def perform_simulate(params)
         response = http.post(SIMULATE_PATH, body: simulate_body(params))
 
-        build_response(response.body)
+        build_c2b_response(response.body)
       rescue Lipwa::GatewayError => e
         Failure(e)
       end
@@ -87,7 +87,7 @@ module Lipwa
         }
       end
 
-      def build_response(body)
+      def build_c2b_response(body)
         Success(Lipwa::Response.new(
                   success: body["ResponseCode"] == "0",
                   provider_reference: body["ConversationID"] || body["OriginatorConversationID"] ||
