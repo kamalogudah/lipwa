@@ -2,6 +2,7 @@
 
 require_relative "../gateway"
 require_relative "../gateways"
+require_relative "../capabilities/c2b"
 require_relative "../capabilities/stk_push"
 
 module Lipwa
@@ -11,6 +12,7 @@ module Lipwa
     # directly, since Daraja's OAuth + sandbox/production hosts are fixed
     # per environment.
     class Mpesa < Lipwa::Gateway
+      include Lipwa::Capabilities::C2B
       include Lipwa::Capabilities::StkPush
 
       setting :consumer_key
