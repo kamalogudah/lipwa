@@ -9,6 +9,9 @@ class IntegrationTestGateway < Lipwa::Gateways::Mpesa
     c.consumer_secret = "test-consumer-secret"
     c.shortcode = "174379"
     c.passkey = "test-passkey"
+    c.initiator_name = "testapi"
+    c.initiator_password = "test-initiator-password"
+    c.security_credential_cert = TEST_MPESA_CERT
   end
 end
 
@@ -62,7 +65,48 @@ module Lipwa
         end
       end
 
+      def test_disburse_b2c_success
+        VCR.use_cassette("mpesa/b2c_success") do
+          result = IntegrationTestGateway.new.disburse(**valid_b2c_args)
+
+          assert result.success?
+          assert_equal "AG_20180402_00004a92452ef78e864d", result.value!.provider_reference
+        end
+      end
+
+      def test_disburse_b2b_success
+        VCR.use_cassette("mpesa/b2b_success") do
+          result = IntegrationTestGateway.new.disburse(**valid_b2b_args)
+
+          assert result.success?
+          assert_equal "AG_20180402_00004a92452ef78e865f", result.value!.provider_reference
+        end
+      end
+
       private
+
+      def valid_b2c_args
+        {
+          command_id: "SalaryPayment",
+          amount: Lipwa::Money.new(amount: 100, currency: "KES"),
+          party_b: "254712345678",
+          remarks: "August salary",
+          result_url: "https://example.com/webhooks/mpesa/result",
+          queue_timeout_url: "https://example.com/webhooks/mpesa/timeout"
+        }
+      end
+
+      def valid_b2b_args
+        {
+          command_id: "BusinessPayBill",
+          amount: Lipwa::Money.new(amount: 100, currency: "KES"),
+          party_b: "600000",
+          remarks: "Settlement",
+          result_url: "https://example.com/webhooks/mpesa/result",
+          queue_timeout_url: "https://example.com/webhooks/mpesa/timeout",
+          account_reference: "INV-123"
+        }
+      end
 
       def valid_stk_push_args
         {
