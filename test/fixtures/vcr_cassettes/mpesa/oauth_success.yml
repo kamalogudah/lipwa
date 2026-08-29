@@ -1,0 +1,24 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials
+    body:
+      encoding: UTF-8
+      string: ''
+    headers:
+      Authorization:
+      - Basic dGVzdC1jb25zdW1lci1rZXk6dGVzdC1jb25zdW1lci1zZWNyZXQ=
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json;charset=UTF-8
+    body:
+      encoding: UTF-8
+      string: '{"access_token":"SANDBOX-TEST-ACCESS-TOKEN","expires_in":"3599"}'
+    http_version:
+  recorded_at: Sat, 01 Jan 2000 00:00:00 GMT
+recorded_with: VCR 6.4.0
