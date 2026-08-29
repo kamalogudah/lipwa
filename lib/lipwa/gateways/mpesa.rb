@@ -4,6 +4,7 @@ require_relative "../gateway"
 require_relative "../gateways"
 require_relative "../capabilities/c2b"
 require_relative "../capabilities/stk_push"
+require_relative "../capabilities/disbursement"
 
 module Lipwa
   module Gateways
@@ -14,11 +15,15 @@ module Lipwa
     class Mpesa < Lipwa::Gateway
       include Lipwa::Capabilities::C2B
       include Lipwa::Capabilities::StkPush
+      include Lipwa::Capabilities::Disbursement
 
       setting :consumer_key
       setting :consumer_secret
       setting :shortcode
       setting :passkey
+      setting :initiator_name
+      setting :initiator_password
+      setting :security_credential_cert
 
       private
 
@@ -55,5 +60,6 @@ module Lipwa
 end
 
 require_relative "mpesa/auth"
+require_relative "mpesa/security_credential"
 
 Lipwa::Gateways.register(:mpesa, Lipwa::Gateways::Mpesa)
