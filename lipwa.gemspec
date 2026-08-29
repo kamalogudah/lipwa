@@ -32,9 +32,13 @@ Gem::Specification.new do |spec|
   spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
+  spec.add_dependency "base64", "~> 0.2"
   spec.add_dependency "dry-configurable", "~> 1.0"
+  spec.add_dependency "dry-container", "~> 0.11"
+  spec.add_dependency "dry-monads", "~> 1.6"
   spec.add_dependency "dry-struct", "~> 1.6"
   spec.add_dependency "dry-types", "~> 1.7"
+  spec.add_dependency "dry-validation", "~> 1.10"
   spec.add_dependency "faraday", "~> 2.7"
   spec.add_dependency "faraday-retry", "~> 2.2"
 
