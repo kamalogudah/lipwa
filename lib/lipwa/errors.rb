@@ -13,6 +13,16 @@ module Lipwa
   # doesn't include. A programmer mistake caught at call time.
   class UnsupportedCapabilityError < Error; end
 
+  # Raised (not wrapped) when Lipwa::Webhook.parse_webhook is called for
+  # a provider with no registered parser. A programmer/config mistake,
+  # not something callers should route through Result handling.
+  class UnsupportedProviderError < Error; end
+
+  # Wrapped in Failure(...). The inbound webhook body could not be
+  # parsed (e.g. invalid JSON) — a runtime condition on untrusted
+  # network input, not a programmer mistake.
+  class WebhookParseError < Error; end
+
   # Wrapped in Failure(...). Request params failed contract validation
   # before any network call was made.
   class ValidationError < Error
