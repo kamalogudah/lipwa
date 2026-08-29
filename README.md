@@ -162,6 +162,28 @@ different certificates and mixing them up causes every B2C/B2B request to
 fail. Don't hardcode certificate content in source; load it from a file or
 secret store, e.g. `c.security_credential_cert = File.read("certs/mpesa_production.cer")`.
 
+### Refund
+
+`#refund` reverses a completed M-Pesa transaction by its `TransactionID`
+(Daraja's Transaction Reversal API):
+
+```ruby
+result = Lipwa.gateway(:mpesa).refund(
+  transaction_id: "OEI2AK4Q16",
+  amount: Lipwa::Money.new(amount: 100_00, currency: "KES"),
+  remarks: "Missing item",
+  result_url: "https://example.com/webhooks/mpesa/reversal/result",
+  queue_timeout_url: "https://example.com/webhooks/mpesa/reversal/timeout",
+  occasion: "Customer complaint"
+)
+```
+
+Like `#disburse`, `#refund` only confirms Daraja *accepted* the reversal
+request — the outcome arrives later at `result_url`. It requires the same
+`security_credential_cert` as `#disburse` — see
+[Disbursement](#disbursement-b2c--b2b) for what the cert is and where to
+get it.
+
 ### Webhook handling
 
 Daraja delivers STK Push results and C2B validation/confirmation as
