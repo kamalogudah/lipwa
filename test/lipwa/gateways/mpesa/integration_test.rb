@@ -83,7 +83,25 @@ module Lipwa
         end
       end
 
+      def test_status_query_success
+        VCR.use_cassette("mpesa/status_query_success") do
+          result = IntegrationTestGateway.new.status(**valid_status_query_args)
+
+          assert result.success?
+          assert_equal "AG_20180402_00004a92452ef78e864d", result.value!.provider_reference
+        end
+      end
+
       private
+
+      def valid_status_query_args
+        {
+          transaction_id: "OEI2AK4Q16",
+          remarks: "Confirming payment",
+          result_url: "https://example.com/webhooks/mpesa/result",
+          queue_timeout_url: "https://example.com/webhooks/mpesa/timeout"
+        }
+      end
 
       def valid_b2c_args
         {

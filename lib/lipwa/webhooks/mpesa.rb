@@ -4,10 +4,14 @@ require_relative "../webhook"
 
 module Lipwa
   module Webhooks
-    # Parses Daraja's two distinct callback shapes into a normalized
+    # Parses Daraja's distinct callback shapes into a normalized
     # Lipwa::WebhookEvent:
     #
     #   * STK Push result callback — {"Body"=>{"stkCallback"=>{...}}}
+    #   * Transaction Status / Disbursement result callback —
+    #     {"Result"=>{...}}, delivered to the ResultURL given to
+    #     Lipwa::Capabilities::StatusQuery#status (and B2C/B2B) once
+    #     Daraja finishes processing the query.
     #   * C2B validation/confirmation — a flat hash (TransID, MSISDN, ...),
     #     wire-identical for both requests. Daraja's only signal for which
     #     one fired is which registered URL it hit, not the payload, so
@@ -32,8 +36,12 @@ module Lipwa
       def call(body:, headers: {}) # rubocop:disable Lint/UnusedMethodArgument
         payload = parse(body)
         stk = payload["Body"]&.fetch("stkCallback", nil)
+        result = payload["Result"]
 
-        stk ? stk_event(stk) : c2b_event(payload)
+        return stk_event(stk) if stk
+        return transaction_status_event(result) if result
+
+        c2b_event(payload)
       end
 
       def parse(body)
@@ -48,6 +56,18 @@ module Lipwa
           provider_reference: stk["CheckoutRequestID"],
           message: stk["ResultDesc"],
           raw: stk,
+          verifier: method(:verify_signature)
+        )
+      end
+
+      def transaction_status_event(result)
+        Lipwa::WebhookEvent.new(
+          provider: :mpesa,
+          event_type: :transaction_status,
+          success: result["ResultCode"].zero?,
+          provider_reference: result["TransactionID"] || result["ConversationID"],
+          message: result["ResultDesc"],
+          raw: result,
           verifier: method(:verify_signature)
         )
       end
