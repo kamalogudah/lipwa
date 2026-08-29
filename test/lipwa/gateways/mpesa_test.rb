@@ -33,6 +33,13 @@ module Lipwa
         assert_equal "https://api.safaricom.co.ke", gateway.http.base_url
       end
 
+      def test_capability_c2b_is_registered
+        configure_mpesa
+        gateway = Mpesa.new
+
+        assert gateway.capability?(:c2b)
+      end
+
       def test_capability_stk_push_is_registered
         configure_mpesa
         gateway = Mpesa.new
@@ -42,6 +49,61 @@ module Lipwa
 
       def test_registered_in_gateways_container
         assert_same Mpesa, Lipwa::Gateways[:mpesa].class
+      end
+
+      def test_register_urls_end_to_end_fetches_token_then_calls_through
+        configure_mpesa
+
+        stub_request(:get, "https://sandbox.safaricom.co.ke/oauth/v1/generate")
+          .with(query: { grant_type: "client_credentials" })
+          .to_return(
+            status: 200,
+            headers: { "Content-Type" => "application/json" },
+            body: { access_token: "abc123", expires_in: "3599" }.to_json
+          )
+        stub_request(:post, "https://sandbox.safaricom.co.ke/mpesa/c2b/v1/registerurl")
+          .with { |req| req.headers["Authorization"] == "Bearer abc123" }
+          .to_return(
+            status: 200,
+            headers: { "Content-Type" => "application/json" },
+            body: { ResponseCode: "0", OriginatorConversationID: "12362-3240472-1" }.to_json
+          )
+
+        result = Mpesa.new.register_urls(
+          validation_url: "https://example.com/webhooks/mpesa/validate",
+          confirmation_url: "https://example.com/webhooks/mpesa/confirm"
+        )
+
+        assert result.success?
+        assert_equal "12362-3240472-1", result.value!.provider_reference
+      end
+
+      def test_simulate_end_to_end_fetches_token_then_calls_through
+        configure_mpesa
+
+        stub_request(:get, "https://sandbox.safaricom.co.ke/oauth/v1/generate")
+          .with(query: { grant_type: "client_credentials" })
+          .to_return(
+            status: 200,
+            headers: { "Content-Type" => "application/json" },
+            body: { access_token: "abc123", expires_in: "3599" }.to_json
+          )
+        stub_request(:post, "https://sandbox.safaricom.co.ke/mpesa/c2b/v1/simulate")
+          .with { |req| req.headers["Authorization"] == "Bearer abc123" }
+          .to_return(
+            status: 200,
+            headers: { "Content-Type" => "application/json" },
+            body: { ResponseCode: "0", ConversationID: "AG_20180402_00004a92452ef78e864d" }.to_json
+          )
+
+        result = Mpesa.new.simulate(
+          amount: Lipwa::Money.new(amount: 100, currency: "KES"),
+          phone_number: "254712345678",
+          bill_ref_number: "ORDER-123"
+        )
+
+        assert result.success?
+        assert_equal "AG_20180402_00004a92452ef78e864d", result.value!.provider_reference
       end
 
       def test_stk_push_end_to_end_fetches_token_then_calls_through
@@ -80,7 +142,7 @@ module Lipwa
           c.env = env
           c.consumer_key = "key"
           c.consumer_secret = "secret"
-          c.shortcode = "174379"
+          c.shortcode = "600584"
           c.passkey = "passkey"
         end
       end

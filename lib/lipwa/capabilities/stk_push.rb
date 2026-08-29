@@ -39,7 +39,7 @@ module Lipwa
       def perform_stk_push(params)
         response = http.post(PATH, body: stk_push_body(params))
 
-        build_response(response.body)
+        build_stk_push_response(response.body)
       rescue Lipwa::GatewayError => e
         Failure(e)
       end
@@ -72,7 +72,7 @@ module Lipwa
         Base64.strict_encode64("#{config.shortcode}#{config.passkey}#{timestamp}")
       end
 
-      def build_response(body)
+      def build_stk_push_response(body)
         Success(Lipwa::Response.new(
                   success: body["ResponseCode"] == "0",
                   provider_reference: body["CheckoutRequestID"],
