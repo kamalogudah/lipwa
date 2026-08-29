@@ -1,0 +1,47 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials
+    body:
+      encoding: UTF-8
+      string: ''
+    headers:
+      Authorization:
+      - Basic dGVzdC1jb25zdW1lci1rZXk6dGVzdC1jb25zdW1lci1zZWNyZXQ=
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json;charset=UTF-8
+    body:
+      encoding: UTF-8
+      string: '{"access_token":"SANDBOX-TEST-ACCESS-TOKEN","expires_in":"3599"}'
+    http_version:
+  recorded_at: Sat, 01 Jan 2000 00:00:00 GMT
+- request:
+    method: post
+    uri: https://sandbox.safaricom.co.ke/mpesa/transactionstatus/v1/query
+    body:
+      encoding: UTF-8
+      string: '{"Initiator":"testapi","SecurityCredential":"<redacted>","CommandID":"TransactionStatusQuery","TransactionID":"OEI2AK4Q16","PartyA":"174379","IdentifierType":"4","ResultURL":"https://example.com/webhooks/mpesa/result","QueueTimeOutURL":"https://example.com/webhooks/mpesa/timeout","Remarks":"Confirming payment","Occasion":null}'
+    headers:
+      Authorization:
+      - Bearer SANDBOX-TEST-ACCESS-TOKEN
+      Content-Type:
+      - application/json
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json;charset=UTF-8
+    body:
+      encoding: UTF-8
+      string: '{"ConversationID":"AG_20180402_00004a92452ef78e864d","OriginatorConversationID":"12362-3240472-1","ResponseCode":"0","ResponseDescription":"Accept the service request successfully."}'
+    http_version:
+  recorded_at: Sat, 01 Jan 2000 00:00:01 GMT
+recorded_with: VCR 6.4.0
