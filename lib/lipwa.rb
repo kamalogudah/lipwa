@@ -22,7 +22,10 @@ require_relative "lipwa/contracts/disbursement_contract"
 require_relative "lipwa/capabilities/disbursement"
 require_relative "lipwa/contracts/status_query_contract"
 require_relative "lipwa/capabilities/status_query"
+require_relative "lipwa/contracts/bank_transfer_contract"
+require_relative "lipwa/capabilities/bank_transfer"
 require_relative "lipwa/gateways/mpesa"
+require_relative "lipwa/gateways/coop_bank"
 
 # Unified payment gateway abstraction for African payment providers.
 module Lipwa
