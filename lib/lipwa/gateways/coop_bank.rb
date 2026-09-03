@@ -14,6 +14,8 @@ module Lipwa
       PATHS = { internal: "/FundsTransfer/Internal/A2A/2.0.0", rtgs: "/FundsTransfer/External/A2A/2.0.0",
                 pesalink: "/FundsTransfer/External/A2M/2.0.0", bill_payment: "/BillPayment/PayBill/1.0.0",
                 balance: "/Enquiry/AccountBalance/1.0.0", statement: "/Enquiry/MiniStatement/1.0.0" }.freeze
+      setting :api_key
+      setting :api_secret
       setting :client_id
       setting :client_secret
       setting :token_url
@@ -22,12 +24,14 @@ module Lipwa
 
       def build_http_adapter
         config = self.class.config
-        unless config.client_id && config.client_secret
+        api_key = config.api_key || config.client_id
+        api_secret = config.api_secret || config.client_secret
+        unless api_key && api_secret
           raise Lipwa::ConfigurationError,
-                "#{self.class} is missing client_id/client_secret — set them via .configure"
+                "#{self.class} is missing api_key/api_secret — set them via .configure"
         end
 
-        auth = Auth.new(client_id: config.client_id, client_secret: config.client_secret,
+        auth = Auth.new(client_id: api_key, client_secret: api_secret,
                         token_url: config.token_url || TOKEN_URLS.fetch(config.env))
         HttpAdapter.new(base_url: config.base_url || BASE_URLS.fetch(config.env),
                         auth_strategy: AuthStrategies::BearerToken.new(auth),
