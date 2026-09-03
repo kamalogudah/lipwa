@@ -45,6 +45,26 @@ module Lipwa
         assert result.success?
       end
 
+      def test_coop_message_reference_shape_passes
+        result = contract.call(message_reference: "8f618d57-14e2-4e56-91f8-649ca920318b")
+
+        assert result.success?
+      end
+
+      def test_a_provider_reference_is_required
+        result = contract.call({})
+
+        refute result.success?
+        assert result.errors.to_h.key?(:transaction_id)
+      end
+
+      def test_transaction_id_and_message_reference_are_mutually_exclusive
+        result = contract.call(valid_params.merge(message_reference: "REF-1"))
+
+        refute result.success?
+        assert result.errors.to_h.key?(:message_reference)
+      end
+
       private
 
       def contract
