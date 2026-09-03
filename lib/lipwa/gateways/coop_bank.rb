@@ -4,16 +4,19 @@ require "securerandom"
 require_relative "../gateway"
 require_relative "../gateways"
 require_relative "../capabilities/bank_transfer"
+require_relative "../capabilities/status_query"
 module Lipwa
   module Gateways
     class CoopBank < Lipwa::Gateway
       include Lipwa::Capabilities::BankTransfer
+      include Lipwa::Capabilities::StatusQuery
       BASE_URLS = { sandbox: "https://developer.co-opbank.co.ke:8243",
                     production: "https://developer.co-opbank.co.ke:8243" }.freeze
       TOKEN_URLS = BASE_URLS.transform_values { |url| "#{url}/token" }.freeze
       PATHS = { internal: "/FundsTransfer/Internal/A2A/2.0.0", rtgs: "/FundsTransfer/External/A2A/2.0.0",
                 pesalink: "/FundsTransfer/External/A2M/2.0.0", bill_payment: "/BillPayment/PayBill/1.0.0",
                 balance: "/Enquiry/AccountBalance/1.0.0", statement: "/Enquiry/MiniStatement/1.0.0" }.freeze
+      STATUS_PATH = "/QueryStatus/v1.0.0/query"
       setting :api_key
       setting :api_secret
       setting :client_id
@@ -48,6 +51,22 @@ module Lipwa
         body[:StartDate] = params[:from_date].iso8601 if params[:from_date]
         body[:EndDate] = params[:to_date].iso8601 if params[:to_date]
         http.post(PATHS[:statement], body: body)
+      end
+
+      def status_query_request(params)
+        http.post(STATUS_PATH, body: { MessageReference: params[:message_reference] })
+      end
+
+      def build_status_query_response(body)
+        code = body["MessageCode"]
+        Success(Lipwa::Response.new(success: code.to_s == "0",
+                                    provider_reference: body["MessageReference"]&.to_s,
+                                    message: body["MessageDescription"]&.to_s,
+                                    code: code&.to_s, raw: body))
+      end
+
+      def ensure_status_query_config_present!
+        # Co-op status queries use the gateway's normal OAuth credentials.
       end
 
       def transfer_body(params)
