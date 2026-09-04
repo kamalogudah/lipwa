@@ -67,7 +67,7 @@ class JengaAuthStrategyTest < Minitest::Test
 
     refute_match(/oauth-token/, io.string)
     refute_match(%r{Signature: [A-Za-z0-9+/=]{20,}}i, io.string)
-    assert_match(/Signature: \[REDACTED\]/i, io.string)
+    assert_match(/"Signature" => "\[REDACTED\]"/, io.string)
     stubs.verify_stubbed_calls
   end
 

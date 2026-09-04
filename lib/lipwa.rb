@@ -2,6 +2,7 @@
 
 require_relative "lipwa/version"
 require_relative "lipwa/errors"
+require_relative "lipwa/logging"
 require_relative "lipwa/types"
 require_relative "lipwa/money"
 require_relative "lipwa/response"

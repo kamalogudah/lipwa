@@ -39,6 +39,11 @@ Lipwa.configure do |config|
 end
 ```
 
+When a logger is configured, HTTP calls emit structured `lipwa.http` hash
+events with the method, URL, status, duration, and request/response details.
+Credential headers, secret query parameters, and sensitive JSON fields are
+replaced with `[REDACTED]`; the same redaction is applied to gateway errors.
+
 Then configure each gateway you use. For M-Pesa:
 
 ```ruby

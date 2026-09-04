@@ -4,6 +4,7 @@ require "faraday"
 require "faraday/retry"
 require_relative "errors"
 require_relative "auth_strategies"
+require_relative "logging"
 
 module Lipwa
   # Thin wrapper around Faraday shared by every gateway's HTTP calls:
@@ -92,10 +93,7 @@ module Lipwa
     end
 
     def configure_logger(conn)
-      conn.response :logger, logger, headers: true, bodies: true do |l|
-        l.filter(/(Authorization: )(.+)/, '\1[REDACTED]')
-        l.filter(/(Signature: )(.+)/i, '\1[REDACTED]')
-      end
+      conn.use Logging::Middleware, logger
     end
 
     def configure_timeouts(conn)
