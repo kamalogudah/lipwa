@@ -1,5 +1,7 @@
 ## [0.1.1]
 
+- Add receive-only Lightning Network support through LNbits, including API-key
+  authentication, invoice creation/status checks, and verified webhook parsing
 - Add a capability-focused documentation site and rewrite the project README
 - Add constrained decimal amounts and currency-safe arithmetic to `Lipwa::Money`
 - Formalize transient HTTP retries with bounded exponential backoff and idempotency-safe writes
