@@ -1,360 +1,123 @@
 # Lipwa
 
-Lipwa is a unified Ruby gem for accepting and disbursing payments across
-African payment providers — mobile money, bank APIs, and (eventually) card
-rails — behind one consistent, capability-based interface. It currently
-ships a full integration with Safaricom's **M-Pesa Daraja API**: STK Push,
-C2B, B2C/B2B disbursements, and inbound webhook handling.
+Lipwa is a capability-based Ruby toolkit for African payment APIs. Mobile
+money, bank transfers, payouts, and callbacks do not share one card-shaped
+interface; each gateway exposes only the flows it supports.
 
-Every gateway call returns a `Dry::Monads::Result`
-(`Success(Lipwa::Response)` / `Failure(Lipwa::Error)`) instead of raising —
-see [Error handling](#error-handling) below. Only genuine programmer
-mistakes (bad config, calling a capability the gateway doesn't support) are
-raised as exceptions.
+```ruby
+gateway = Lipwa.gateway(:mpesa)
+gateway.capability?(:stk_push)      # => true
+gateway.capability?(:bank_transfer) # => false
+```
+
+## What it provides
+
+- Explicit, composable gateway capabilities
+- Validated inputs and immutable decimal money values
+- `Dry::Monads::Result` for expected validation and network failures
+- Normalized responses and webhook events
+- OAuth/signing strategies, timeouts, safe retries, and redacted logs
 
 ## Installation
-
-Install the gem and add it to the application's Gemfile by executing:
 
 ```bash
 bundle add lipwa
 ```
 
-If bundler is not being used to manage dependencies, install the gem by
-executing:
+Lipwa supports Ruby 3.2 and newer.
 
-```bash
-gem install lipwa
-```
-
-## Configuration
-
-Set gem-wide defaults once (logger, default timeout, Faraday adapter — all
-optional):
+## Quick start
 
 ```ruby
+require "lipwa"
+
 Lipwa.configure do |config|
   config.logger = Rails.logger
   config.default_timeout = 10
 end
-```
 
-When a logger is configured, HTTP calls emit structured `lipwa.http` hash
-events with the method, URL, status, duration, and request/response details.
-Credential headers, secret query parameters, and sensitive JSON fields are
-replaced with `[REDACTED]`; the same redaction is applied to gateway errors.
-
-Then configure each gateway you use. For M-Pesa:
-
-```ruby
-Lipwa::Gateways::Mpesa.configure do |c|
-  c.env = :sandbox # or :production
-  c.consumer_key = ENV["MPESA_CONSUMER_KEY"]
-  c.consumer_secret = ENV["MPESA_CONSUMER_SECRET"]
-  c.shortcode = ENV["MPESA_SHORTCODE"]
-  c.passkey = ENV["MPESA_PASSKEY"] # STK Push only
-
-  # B2C/B2B disbursements only:
-  c.initiator_name = ENV["MPESA_INITIATOR_NAME"]
-  c.initiator_password = ENV["MPESA_INITIATOR_PASSWORD"]
-  c.security_credential_cert = File.read(ENV["MPESA_CERT_PATH"])
+Lipwa::Gateways::Mpesa.configure do |config|
+  config.env = :sandbox
+  config.consumer_key = ENV.fetch("MPESA_CONSUMER_KEY")
+  config.consumer_secret = ENV.fetch("MPESA_CONSUMER_SECRET")
+  config.shortcode = ENV.fetch("MPESA_SHORTCODE")
+  config.passkey = ENV.fetch("MPESA_PASSKEY")
 end
-```
 
-`consumer_key`/`consumer_secret` authenticate every Daraja call (OAuth2
-client-credentials, cached and auto-refreshed). `shortcode`/`passkey` are
-only needed for STK Push and C2B. `initiator_name`/`initiator_password`/
-`security_credential_cert` are only needed if you call `#disburse` — see
-[Disbursement](#disbursement-b2c--b2b) for what the cert is and where to
-get it. Configuring only what you actually use is fine; each capability
-raises `Lipwa::ConfigurationError` at call time if something it needs is
-missing, not at load time.
-
-For Jenga HQ:
-
-```ruby
-Lipwa::Gateways::Jenga.configure do |c|
-  c.env = :sandbox # or :production
-  c.api_key = ENV["JENGA_API_KEY"]
-  c.merchant_code = ENV["JENGA_MERCHANT_CODE"]
-  c.consumer_secret = ENV["JENGA_CONSUMER_SECRET"]
-  c.private_key = File.read(ENV["JENGA_PRIVATE_KEY_PATH"])
-  c.source_account = ENV["JENGA_SOURCE_ACCOUNT"]
-  c.source_name = ENV["JENGA_SOURCE_NAME"]
-  c.country_code = "KE"
-  c.partner_id = ENV["JENGA_PARTNER_ID"] # bill payments only
-end
-```
-
-Jenga access tokens are cached and refreshed automatically. Each operation
-is signed with the endpoint's required RSA-SHA256 formula and sent in the
-`Signature` header. Register the matching public key in Jenga HQ; never
-commit the private key.
-
-Bank transfers support `:internal`, `:pesalink`, `:rtgs`, `:swift`, and
-`:bill_payment` rails:
-
-```ruby
-result = Lipwa.gateway(:jenga).transfer(
-  rail: :rtgs,
-  amount: Lipwa::Money.new(amount: 1_000, currency: "KES"),
-  source_account: ENV["JENGA_SOURCE_ACCOUNT"],
-  destination_account: "0123456789",
-  destination_bank_code: "68",
-  destination_name: "Recipient Name",
-  reference: "TRANSFER-123",
-  narration: "Supplier payment"
-)
-
-Lipwa.gateway(:jenga).balance(account_number: ENV["JENGA_SOURCE_ACCOUNT"])
-Lipwa.gateway(:jenga).statement(account_number: ENV["JENGA_SOURCE_ACCOUNT"])
-Lipwa.gateway(:jenga).forex_rates(currency_code: "KES", amount: 1_000, to_currency: "USD")
-```
-
-Parse and authenticate Jenga receive-payment IPNs with the Basic Auth
-credentials registered alongside the callback URL in Jenga HQ:
-
-```ruby
-result = Lipwa::Webhook.parse_webhook(
-  provider: :jenga,
-  body: request.body.read,
-  headers: request.headers
-)
-
-event = result.value!
-event.verify_signature(
-  username: ENV["JENGA_WEBHOOK_USERNAME"],
-  password: ENV["JENGA_WEBHOOK_PASSWORD"]
-)
-```
-
-Fetch a configured gateway by name instead of referencing the class
-directly:
-
-```ruby
-Lipwa.gateway(:mpesa).stk_push(...)
-```
-
-## Usage
-
-### STK Push (Lipa Na M-Pesa Online)
-
-Pushes a payment prompt to the payer's phone. The actual result of the
-payment arrives later at `callback_url` — a successful call here only
-confirms Daraja *accepted* the request, not that the customer paid.
-
-```ruby
 result = Lipwa.gateway(:mpesa).stk_push(
-  amount: Lipwa::Money.new(amount: 100, currency: "KES"), # 100 = 1.00 KES, minor units
+  amount: Lipwa::Money.new(amount: "100.00", currency: "KES"),
   phone_number: "254712345678",
   account_reference: "ORDER-123",
-  callback_url: "https://example.com/webhooks/mpesa/stk"
-)
-
-To make application-level retries safe, pass the same `idempotency_key` on
-every attempt. Lipwa sends it as the standard `Idempotency-Key` header on
-every gateway operation; the provider determines how long keys are retained.
-Generate a new key for each distinct operation.
-
-```ruby
-result = Lipwa.gateway(:mpesa).stk_push(
-  amount: Lipwa::Money.new(amount: 100, currency: "KES"),
-  phone_number: "254712345678",
-  account_reference: "ORDER-123",
-  callback_url: "https://example.com/webhooks/mpesa/stk",
+  callback_url: "https://payments.example.com/webhooks/mpesa",
   idempotency_key: "stk-order-123"
 )
-```
 
 result.either(
-  ->(response) { response.provider_reference }, # CheckoutRequestID
-  ->(error) { logger.error(error.message) }
+  ->(response) { puts response.provider_reference },
+  ->(error) { warn error.message }
 )
 ```
 
-### C2B (Customer to Business)
+A successful STK response means M-Pesa accepted the request. The final payment
+outcome arrives asynchronously at `callback_url`.
 
-Registers the validation/confirmation webhook URLs Daraja calls when a
-customer pays your paybill/till directly (outside STK Push), and — sandbox
-only — simulates such a payment so you can exercise those URLs without a
-real transaction.
+## Capability matrix
+
+| Gateway | Capabilities |
+| --- | --- |
+| `:mpesa` | `stk_push`, `c2b`, `disbursement`, `status_query`, `refund` |
+| `:coop_bank` | `bank_transfer`: transfer, balance, statement |
+| `:jenga` | `bank_transfer`, `disbursement`, plus `forex_rates` |
+
+## Money
+
+`Lipwa::Money` stores non-negative amounts as constrained `BigDecimal` values.
+Addition, subtraction, and comparison require matching currencies;
+multiplication and division accept numeric scalars.
 
 ```ruby
-Lipwa.gateway(:mpesa).register_urls(
-  validation_url: "https://example.com/webhooks/mpesa/validate",
-  confirmation_url: "https://example.com/webhooks/mpesa/confirm"
-)
+price = Lipwa::Money.new(amount: "100.25", currency: "KES")
+tax = Lipwa::Money.new(amount: "16.04", currency: "KES")
 
-# Sandbox only:
-Lipwa.gateway(:mpesa).simulate(
-  amount: Lipwa::Money.new(amount: 100, currency: "KES"),
-  phone_number: "254712345678",
-  bill_ref_number: "ORDER-123"
-)
+(price + tax).to_s # => "116.29 KES"
+(price * 2).to_s   # => "200.5 KES"
 ```
 
-### Disbursement (B2C / B2B)
+Currency conversion is never implicit.
 
-`#disburse` sends money out from your shortcode — to a customer's phone
-(B2C: salaries, promotions, business payments) or to another business
-(B2B: paybill/till settlement) — driven by `command_id` rather than two
-separate methods:
+## Results and errors
 
-```ruby
-# B2C — pay out to a customer's phone
-result = Lipwa.gateway(:mpesa).disburse(
-  command_id: "SalaryPayment", # or "BusinessPayment" / "PromotionPayment"
-  amount: Lipwa::Money.new(amount: 5_000_00, currency: "KES"),
-  party_b: "254712345678", # payee MSISDN
-  remarks: "August salary",
-  result_url: "https://example.com/webhooks/mpesa/b2c/result",
-  queue_timeout_url: "https://example.com/webhooks/mpesa/b2c/timeout",
-  occasion: "August payroll"
-)
+Operations return `Success(Lipwa::Response)`, `Failure(Lipwa::ValidationError)`,
+or `Failure(Lipwa::GatewayError)`. Configuration and unsupported-provider
+errors are raised because they are programmer or deployment mistakes.
 
-# B2B — settle with another business shortcode
-result = Lipwa.gateway(:mpesa).disburse(
-  command_id: "BusinessPayBill", # or "BusinessBuyGoods" / "MerchantToMerchantTransfer"
-  amount: Lipwa::Money.new(amount: 10_000_00, currency: "KES"),
-  party_b: "600000", # payee business shortcode
-  remarks: "Supplier settlement",
-  result_url: "https://example.com/webhooks/mpesa/b2b/result",
-  queue_timeout_url: "https://example.com/webhooks/mpesa/b2b/timeout",
-  account_reference: "INV-2026-08-001" # required for B2B command IDs
-)
-```
+For asynchronous operations, persist `response.provider_reference` and
+correlate it with a verified webhook. Never treat request acknowledgement as
+the final transaction outcome.
 
-Like STK Push, `#disburse` only confirms Daraja *accepted* the request
-(`ConversationID`) — the outcome (success or failure of the actual
-payout) arrives later at `result_url`.
+## Documentation
 
-**About `security_credential_cert`**: Daraja requires every B2C/B2B
-request to carry a `SecurityCredential` — your initiator password,
-RSA-encrypted with Safaricom's public certificate. Lipwa does this
-encryption for you (see `Lipwa::Gateways::Mpesa::SecurityCredential`); you
-just need to supply the certificate itself as PEM/DER content via
-`security_credential_cert`. Download it from the Daraja developer
-portal — the **Test Credentials** page for sandbox, or your app's
-production certificate for production — since sandbox and production use
-different certificates and mixing them up causes every B2C/B2B request to
-fail. Don't hardcode certificate content in source; load it from a file or
-secret store, e.g. `c.security_credential_cert = File.read("certs/mpesa_production.cer")`.
-
-### Refund
-
-`#refund` reverses a completed M-Pesa transaction by its `TransactionID`
-(Daraja's Transaction Reversal API):
-
-```ruby
-result = Lipwa.gateway(:mpesa).refund(
-  transaction_id: "OEI2AK4Q16",
-  amount: Lipwa::Money.new(amount: 100_00, currency: "KES"),
-  remarks: "Missing item",
-  result_url: "https://example.com/webhooks/mpesa/reversal/result",
-  queue_timeout_url: "https://example.com/webhooks/mpesa/reversal/timeout",
-  occasion: "Customer complaint"
-)
-```
-
-Like `#disburse`, `#refund` only confirms Daraja *accepted* the reversal
-request — the outcome arrives later at `result_url`. It requires the same
-`security_credential_cert` as `#disburse` — see
-[Disbursement](#disbursement-b2c--b2b) for what the cert is and where to
-get it.
-
-### Webhook handling
-
-Daraja delivers STK Push results and C2B validation/confirmation as
-inbound HTTP callbacks. Parse and (for M-Pesa) verify them with
-`Lipwa::Webhook`:
-
-```ruby
-# in your webhook controller
-result = Lipwa::Webhook.parse_webhook(provider: :mpesa, body: request.body.read, headers: request.headers)
-
-result.either(
-  lambda do |event|
-    if event.verify_signature(source_ip: request.remote_ip)
-      # event.event_type   => :stk_callback or :c2b
-      # event.success?     => whether the STK push succeeded (always true for C2B —
-      #                       C2B callbacks only fire for an already-completed payment)
-      # event.provider_reference => CheckoutRequestID (STK) or TransID (C2B)
-      handle(event)
-    else
-      head :forbidden
-    end
-  end,
-  ->(error) { logger.error(error.message) }
-)
-```
-
-M-Pesa doesn't cryptographically sign callbacks, so `verify_signature`
-checks the request's source IP against Safaricom's published callback IP
-ranges instead — always call it before trusting a callback's contents.
-
-### `Lipwa::Money`
-
-Amounts are always a `Lipwa::Money` — an immutable value object storing
-minor currency units (e.g. `100` = KES 1.00) plus an ISO 4217 currency
-code (defaults to `"KES"`):
-
-```ruby
-Lipwa::Money.new(amount: 100, currency: "KES")
-```
-
-## Error handling
-
-Gateway methods (`#stk_push`, `#register_urls`, `#simulate`, `#disburse`)
-never raise for expected failure modes — they return a
-`Dry::Monads::Result`:
-
-- `Success(Lipwa::Response)` — `#success?`, `#provider_reference`,
-  `#message`, `#code`, `#raw` (the parsed provider response). Note a
-  `Success` can still wrap `response.success? == false` — Daraja
-  synchronous validation errors (bad shortcode, malformed request) come
-  back as a normal 200 response with a non-zero `ResponseCode`.
-- `Failure(Lipwa::ValidationError)` — your params failed contract
-  validation before any network call was made.
-- `Failure(Lipwa::GatewayError)` — the HTTP call itself failed (timeout,
-  connection error) or the provider returned an HTTP error status.
-
-`Lipwa::ConfigurationError` and `Lipwa::UnsupportedCapabilityError` are
-raised, not wrapped — they represent programmer/ops mistakes (missing
-credentials, calling a capability a gateway doesn't include) that should
-fail loudly at call time rather than be routed through error-handling
-code.
+- [Documentation home](docs/index.md)
+- [Getting started](docs/getting-started.md)
+- [Capabilities](docs/capabilities.md)
+- [Gateway configuration](docs/gateways.md)
+- [Webhooks](docs/webhooks.md)
+- [Reliability and errors](docs/reliability.md)
 
 ## Development
 
-After checking out the repo, run `bin/setup` to install dependencies.
-Then, run `rake test` to run the tests. You can also run `bin/console` for
-an interactive prompt that will allow you to experiment.
+```bash
+bin/setup
+bundle exec rake
+bin/console
+```
 
-Tests run against hand-authored VCR cassettes
-(`test/fixtures/vcr_cassettes/mpesa/`) with fake sandbox credentials —
-they never hit Safaricom's real sandbox, so no network access or real
-credentials are needed to run the suite.
+Tests use WebMock and sanitized VCR fixtures; they do not contact live provider
+sandboxes.
 
-To install this gem onto your local machine, run `bundle exec rake
-install`. To release a new version, update the version number in
-`version.rb`, and then run `bundle exec rake release`, which will create a
-git tag for the version, push git commits and the created tag, and push
-the `.gem` file to [rubygems.org](https://rubygems.org).
+## Contributing and license
 
-## Contributing
-
-Bug reports and pull requests are welcome on GitHub at
-https://github.com/kamalogudah/lipwa. This project is intended to be a
-safe, welcoming space for collaboration, and contributors are expected to
-adhere to the [code of conduct](https://github.com/kamalogudah/lipwa/blob/master/CODE_OF_CONDUCT.md).
-
-## License
-
-The gem is available as open source under the terms of the
-[MIT License](https://opensource.org/licenses/MIT).
-
-## Code of Conduct
-
-Everyone interacting in the Lipwa project's codebases, issue trackers,
-chat rooms and mailing lists is expected to follow the
-[code of conduct](https://github.com/kamalogudah/lipwa/blob/master/CODE_OF_CONDUCT.md).
+Bug reports and pull requests are welcome on
+[GitHub](https://github.com/kamalogudah/lipwa). Please follow the
+[code of conduct](CODE_OF_CONDUCT.md). Lipwa is available under the
+[MIT License](LICENSE.txt).

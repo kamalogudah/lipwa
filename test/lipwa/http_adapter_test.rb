@@ -36,6 +36,21 @@ class HttpAdapterTest < Minitest::Test
     stubs.verify_stubbed_calls
   end
 
+  def test_post_serializes_big_decimals_as_exact_json_numbers
+    stubs = Faraday::Adapter::Test::Stubs.new do |stub|
+      stub.post("/amounts") do |env|
+        assert_equal({ "amount" => BigDecimal("10.25") },
+                     JSON.parse(env.body, decimal_class: BigDecimal))
+        [201, {}, ""]
+      end
+    end
+    adapter = Lipwa::HttpAdapter.new(base_url: "https://example.com", stubs: stubs)
+
+    adapter.post("/amounts", body: { amount: BigDecimal("10.25") })
+
+    stubs.verify_stubbed_calls
+  end
+
   def test_sends_idempotency_key_header
     stubs = Faraday::Adapter::Test::Stubs.new do |stub|
       stub.post("/payments") do |env|
@@ -98,6 +113,79 @@ class HttpAdapterTest < Minitest::Test
 
     assert_equal 200, response.status
     assert_equal 3, attempts
+  end
+
+  def test_retries_post_with_an_idempotency_key
+    attempts = 0
+    stubs = Faraday::Adapter::Test::Stubs.new do |stub|
+      stub.post("/payments") do
+        attempts += 1
+        attempts < 2 ? [503, {}, ""] : [200, {}, "ok"]
+      end
+    end
+    adapter = Lipwa::HttpAdapter.new(
+      base_url: "https://example.com", stubs: stubs,
+      retry_options: { interval: 0 }
+    )
+
+    response = adapter.post("/payments", idempotency_key: "payment-123")
+
+    assert_equal 200, response.status
+    assert_equal 2, attempts
+  end
+
+  def test_does_not_retry_post_without_an_idempotency_key
+    attempts = 0
+    stubs = Faraday::Adapter::Test::Stubs.new do |stub|
+      stub.post("/payments") do
+        attempts += 1
+        [503, {}, ""]
+      end
+    end
+    adapter = Lipwa::HttpAdapter.new(
+      base_url: "https://example.com", stubs: stubs,
+      retry_options: { interval: 0 }
+    )
+
+    response = adapter.post("/payments")
+
+    assert_equal 503, response.status
+    assert_equal 1, attempts
+  end
+
+  def test_retry_after_header_takes_precedence_over_exponential_backoff
+    waits = []
+    attempts = 0
+    stubs = Faraday::Adapter::Test::Stubs.new do |stub|
+      stub.get("/limited") do
+        attempts += 1
+        attempts < 2 ? [429, { "Retry-After" => "1.25" }, ""] : [200, {}, "ok"]
+      end
+    end
+    adapter = Lipwa::HttpAdapter.new(
+      base_url: "https://example.com", stubs: stubs,
+      retry_options: {
+        max: 1, interval: 0,
+        retry_block: ->(will_retry_in:, **) { waits << will_retry_in }
+      }
+    )
+
+    response = adapter.get("/limited")
+
+    assert_equal 200, response.status
+    assert_equal [1.25], waits
+  end
+
+  def test_retry_policy_has_bounded_exponential_backoff
+    options = Lipwa::HttpAdapter::DEFAULT_RETRY_OPTIONS
+
+    assert_equal 2, options[:max]
+    assert_equal 0.5, options[:interval]
+    assert_equal 0.5, options[:interval_randomness]
+    assert_equal 2, options[:backoff_factor]
+    assert_equal 5, options[:max_interval]
+    assert_equal %i[get head options], options[:methods]
+    assert_equal [429, 500, 502, 503, 504], options[:retry_statuses]
   end
 
   def test_network_error_is_wrapped_in_gateway_error
