@@ -24,27 +24,27 @@ module Lipwa
       CONTRACT = Lipwa::Contracts::RefundContract.new
 
       # rubocop:disable Metrics/ParameterLists
-      def refund(transaction_id:, amount:, remarks:, result_url:, queue_timeout_url:, occasion: nil)
-        validate_and_refund(
-          transaction_id: transaction_id, amount: amount, remarks: remarks,
-          result_url: result_url, queue_timeout_url: queue_timeout_url, occasion: occasion
-        )
+      def refund(transaction_id:, amount:, remarks:, result_url:, queue_timeout_url:, occasion: nil,
+                 idempotency_key: nil)
+        args = { transaction_id: transaction_id, amount: amount, remarks: remarks,
+                 result_url: result_url, queue_timeout_url: queue_timeout_url, occasion: occasion }
+        validate_and_refund(args, idempotency_key)
       end
       # rubocop:enable Metrics/ParameterLists
 
       private
 
-      def validate_and_refund(args)
+      def validate_and_refund(args, idempotency_key)
         validation = CONTRACT.call(args)
         return Failure(Lipwa::ValidationError.new(validation)) if validation.failure?
 
-        perform_refund(validation.to_h)
+        perform_refund(validation.to_h, idempotency_key)
       end
 
-      def perform_refund(params)
+      def perform_refund(params, idempotency_key)
         ensure_refund_config_present!
 
-        response = http.post(PATH, body: refund_body(params))
+        response = http.post(PATH, body: refund_body(params), idempotency_key: idempotency_key)
 
         build_refund_response(response.body)
       rescue Lipwa::GatewayError => e

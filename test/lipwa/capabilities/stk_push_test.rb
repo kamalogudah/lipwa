@@ -52,6 +52,20 @@ module Lipwa
         assert_equal "ws_CO_123456789", response.provider_reference
       end
 
+      def test_forwards_idempotency_key_to_gateway_request
+        stub_request(:post, ENDPOINT)
+          .with(headers: { "Idempotency-Key" => "order-123-attempt" })
+          .to_return(
+            status: 200,
+            headers: { "Content-Type" => "application/json" },
+            body: { ResponseCode: "0", CheckoutRequestID: "ws_CO_123456789" }.to_json
+          )
+
+        result = StkPushTestGateway.new.stk_push(**valid_args, idempotency_key: "order-123-attempt")
+
+        assert result.success?
+      end
+
       def test_gateway_error_returns_failure
         stub_request(:post, ENDPOINT).to_raise(Faraday::ConnectionFailed.new("connection reset"))
 

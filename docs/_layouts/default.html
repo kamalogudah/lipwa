@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#102a25">
+    <meta name="description" content="{{ page.description | default: site.description }}">
+    <title>{% if page.title %}{{ page.title }} · {% endif %}{{ site.title }}</title>
+    <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
+  </head>
+  <body>
+    <a class="skip-link" href="#content">Skip to content</a>
+    <header class="site-header">
+      <a class="brand" href="{{ '/' | relative_url }}"><span class="brand-mark">L</span> Lipwa</a>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+      <nav id="site-nav" class="site-nav" aria-label="Primary">
+        <a href="{{ '/getting-started/' | relative_url }}">Start</a>
+        <a href="{{ '/capabilities/' | relative_url }}">Capabilities</a>
+        <a href="{{ '/gateways/' | relative_url }}">Gateways</a>
+        <a href="{{ '/webhooks/' | relative_url }}">Webhooks</a>
+        <a href="{{ '/reliability/' | relative_url }}">Reliability</a>
+        <a href="https://github.com/kamalogudah/lipwa">GitHub ↗</a>
+      </nav>
+    </header>
+    <main id="content" class="page-shell">{{ content }}</main>
+    <footer class="site-footer"><span>Lipwa · payment flows, honestly modeled</span><a href="https://github.com/kamalogudah/lipwa/blob/master/LICENSE.txt">MIT licensed</a></footer>
+    <script>
+      const button = document.querySelector(".nav-toggle");
+      const nav = document.querySelector(".site-nav");
+      button.addEventListener("click", () => {
+        const open = button.getAttribute("aria-expanded") === "true";
+        button.setAttribute("aria-expanded", String(!open));
+        nav.classList.toggle("is-open", !open);
+      });
+    </script>
+  </body>
+</html>

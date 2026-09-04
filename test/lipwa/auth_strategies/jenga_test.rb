@@ -1,0 +1,89 @@
+# frozen_string_literal: true
+
+require "test_helper"
+require "stringio"
+
+class JengaAuthStrategyTest < Minitest::Test
+  def test_sets_bearer_token_and_verifiable_rsa_sha256_signature
+    key = OpenSSL::PKey::RSA.generate(2048)
+    strategy = build_strategy(
+      key: key,
+      payload: ->(env) { "#{env.method.to_s.upcase}#{env.url.path}" }
+    )
+    env = new_env(method: :post, url: URI("https://example.com/transfers"))
+
+    strategy.apply(env)
+
+    signature = Base64.strict_decode64(env.request_headers["Signature"])
+    assert_equal "Bearer oauth-token", env.request_headers["Authorization"]
+    assert key.public_key.verify(OpenSSL::Digest.new("SHA256"), signature, "POST/transfers")
+  end
+
+  def test_accepts_pem_and_evaluates_payload_for_every_request
+    key = OpenSSL::PKey::RSA.generate(1024)
+    calls = []
+    strategy = build_strategy(
+      key: key.to_pem,
+      payload: lambda { |env|
+        calls << env.url.path
+        env.url.path
+      }
+    )
+
+    strategy.apply(new_env(url: URI("https://example.com/one")))
+    strategy.apply(new_env(url: URI("https://example.com/two")))
+
+    assert_equal ["/one", "/two"], calls
+  end
+
+  def test_rejects_invalid_configuration_and_payload_results
+    key = OpenSSL::PKey::RSA.generate(1024)
+    assert_raises(ArgumentError) { build_strategy(key: key, token: "token") }
+    assert_raises(ArgumentError) { build_strategy(key: key, payload: "payload") }
+    assert_raises(ArgumentError) { build_strategy(key: "not a key") }
+
+    strategy = build_strategy(key: key, payload: ->(_) {})
+    error = assert_raises(ArgumentError) { strategy.apply(new_env) }
+    assert_equal "signature_payload must return a String", error.message
+  end
+
+  def test_http_adapter_applies_jenga_auth_and_redacts_both_headers
+    io = StringIO.new
+    stubs = Faraday::Adapter::Test::Stubs.new do |stub|
+      stub.post("/secure") do |env|
+        assert_equal "Bearer oauth-token", env.request_headers["Authorization"]
+        refute_nil env.request_headers["Signature"]
+        [200, {}, ""]
+      end
+    end
+    adapter = Lipwa::HttpAdapter.new(
+      base_url: "https://example.com",
+      auth_strategy: build_strategy(key: OpenSSL::PKey::RSA.generate(1024)),
+      logger: Logger.new(io),
+      stubs: stubs
+    )
+
+    adapter.post("/secure", body: { amount: 100 })
+
+    refute_match(/oauth-token/, io.string)
+    refute_match(%r{Signature: [A-Za-z0-9+/=]{20,}}i, io.string)
+    assert_match(/"Signature" => "\[REDACTED\]"/, io.string)
+    stubs.verify_stubbed_calls
+  end
+
+  private
+
+  def build_strategy(key:, token: -> { "oauth-token" }, payload: ->(_) { "payload" })
+    Lipwa::AuthStrategies::Jenga.new(
+      token_provider: token,
+      private_key: key,
+      signature_payload: payload
+    )
+  end
+
+  def new_env(**attributes)
+    env = Faraday::Env.new(request_headers: Faraday::Utils::Headers.new)
+    attributes.each { |name, value| env.public_send("#{name}=", value) }
+    env
+  end
+end
