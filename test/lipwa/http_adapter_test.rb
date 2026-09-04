@@ -4,6 +4,11 @@ require "test_helper"
 require "stringio"
 
 class HttpAdapterTest < Minitest::Test
+  CollectingLogger = Struct.new(:events) do
+    def info(event) = events << [:info, event]
+    def error(event) = events << [:error, event]
+  end
+
   def test_get_returns_parsed_json_body
     stubs = Faraday::Adapter::Test::Stubs.new do |stub|
       stub.get("/ping") { [200, { "Content-Type" => "application/json" }, '{"ok":true}'] }
@@ -126,6 +131,34 @@ class HttpAdapterTest < Minitest::Test
     adapter.get("/secure")
 
     refute_match(/super-secret-token/, io.string)
+  end
+
+  def test_logger_emits_structured_redacted_event
+    logger = CollectingLogger.new([])
+    stubs = Faraday::Adapter::Test::Stubs.new do |stub|
+      stub.post("/payments") do
+        [200, { "Content-Type" => "application/json", "Set-Cookie" => "token=response-secret" },
+         '{"access_token":"response-secret","reference":"payment-1"}']
+      end
+    end
+    adapter = Lipwa::HttpAdapter.new(
+      base_url: "https://example.com", logger: logger, stubs: stubs,
+      auth_strategy: Lipwa::AuthStrategies::BearerToken.new(-> { "header-secret" })
+    )
+
+    adapter.post("/payments", params: { token: "query-secret" },
+                              body: { password: "body-secret", amount: 100 })
+
+    level, event = logger.events.fetch(0)
+    assert_equal :info, level
+    assert_equal "lipwa.http", event[:event]
+    assert_equal "POST", event[:method]
+    assert_equal 200, event[:status]
+    assert_kind_of Numeric, event[:duration_ms]
+    assert_equal "[REDACTED]", event.dig(:request, :headers, "Authorization")
+    assert_equal "[REDACTED]", event.dig(:response, :body, "access_token")
+    assert_equal "payment-1", event.dig(:response, :body, "reference")
+    refute_match(/header-secret|query-secret|body-secret|response-secret/, event.inspect)
   end
 
   def test_timeout_and_open_timeout_are_configured_on_the_connection

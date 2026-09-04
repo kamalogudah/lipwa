@@ -1,5 +1,6 @@
 ## [0.1.1]
 
+- Add structured HTTP logging with recursive credential and secret redaction
 - Add `idempotency_key:` support across gateway calls via the `Idempotency-Key` header
 - Add Jenga receive-payment IPN parsing and Basic Auth signature verification
 - Add `Lipwa::HttpAdapter`, a Faraday-based HTTP wrapper
