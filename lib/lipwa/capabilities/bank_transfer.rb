@@ -14,34 +14,41 @@ module Lipwa
       STATEMENT_CONTRACT = Lipwa::Contracts::BankStatementContract.new
 
       def transfer(rail:, amount:, source_account:, destination_account:, reference:, narration: nil,
-                   callback_url: nil, destination_bank_code: nil, destination_name: nil, biller_code: nil)
+                   callback_url: nil, destination_bank_code: nil, destination_name: nil, biller_code: nil,
+                   idempotency_key: nil)
         args = { rail: rail, amount: amount, source_account: source_account,
                  destination_account: destination_account, reference: reference, narration: narration,
                  callback_url: callback_url, destination_bank_code: destination_bank_code,
                  destination_name: destination_name, biller_code: biller_code }
-        invoke_bank_operation(TRANSFER_CONTRACT, args) { |params| bank_transfer_request(params) }
-      end
-
-      def balance(account_number:, message_reference: nil)
-        invoke_bank_operation(ACCOUNT_CONTRACT,
-                              { account_number: account_number, message_reference: message_reference }) do |params|
-          bank_balance_request(params)
+        invoke_bank_operation(TRANSFER_CONTRACT, args, idempotency_key) do |params, key|
+          bank_transfer_request(params, key)
         end
       end
 
-      def statement(account_number:, from_date: nil, to_date: nil, message_reference: nil)
+      def balance(account_number:, message_reference: nil, idempotency_key: nil)
+        invoke_bank_operation(ACCOUNT_CONTRACT,
+                              { account_number: account_number, message_reference: message_reference },
+                              idempotency_key) do |params, key|
+          bank_balance_request(params, key)
+        end
+      end
+
+      def statement(account_number:, from_date: nil, to_date: nil, message_reference: nil,
+                    idempotency_key: nil)
         args = { account_number: account_number, from_date: from_date, to_date: to_date,
                  message_reference: message_reference }
-        invoke_bank_operation(STATEMENT_CONTRACT, args) { |params| bank_statement_request(params) }
+        invoke_bank_operation(STATEMENT_CONTRACT, args, idempotency_key) do |params, key|
+          bank_statement_request(params, key)
+        end
       end
 
       private
 
-      def invoke_bank_operation(contract, args)
+      def invoke_bank_operation(contract, args, idempotency_key)
         validation = contract.call(args)
         return Failure(Lipwa::ValidationError.new(validation)) if validation.failure?
 
-        build_bank_response(yield(validation.to_h).body)
+        build_bank_response(yield(validation.to_h, idempotency_key).body)
       rescue Lipwa::GatewayError => e
         Failure(e)
       end

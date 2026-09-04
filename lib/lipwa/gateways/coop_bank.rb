@@ -40,14 +40,19 @@ module Lipwa
                         adapter: Lipwa.config.adapter)
       end
 
-      def bank_transfer_request(params) = http.post(PATHS.fetch(params[:rail]), body: transfer_body(params))
-      def bank_balance_request(params) = http.post(PATHS[:balance], body: inquiry_body(params))
+      def bank_transfer_request(params, idempotency_key)
+        http.post(PATHS.fetch(params[:rail]), body: transfer_body(params), idempotency_key: idempotency_key)
+      end
 
-      def bank_statement_request(params)
+      def bank_balance_request(params, idempotency_key)
+        http.post(PATHS[:balance], body: inquiry_body(params), idempotency_key: idempotency_key)
+      end
+
+      def bank_statement_request(params, idempotency_key)
         body = inquiry_body(params)
         body[:StartDate] = params[:from_date].iso8601 if params[:from_date]
         body[:EndDate] = params[:to_date].iso8601 if params[:to_date]
-        http.post(PATHS[:statement], body: body)
+        http.post(PATHS[:statement], body: body, idempotency_key: idempotency_key)
       end
 
       def transfer_body(params)

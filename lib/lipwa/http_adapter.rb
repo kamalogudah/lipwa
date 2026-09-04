@@ -12,6 +12,7 @@ module Lipwa
   # bearer tokens (M-Pesa, Co-op) and request-signing (Jenga) plug into
   # the same request path without HttpAdapter knowing which is which.
   class HttpAdapter
+    IDEMPOTENCY_HEADER = "Idempotency-Key"
     DEFAULT_RETRY_OPTIONS = {
       max: 2,
       interval: 0.5,
@@ -39,16 +40,16 @@ module Lipwa
     end
     # rubocop:enable Metrics/ParameterLists
 
-    def get(path, params: {}, headers: {})
-      request(:get, path, params: params, headers: headers)
+    def get(path, params: {}, headers: {}, idempotency_key: nil)
+      request(:get, path, params: params, headers: idempotency_headers(headers, idempotency_key))
     end
 
-    def post(path, body: nil, params: {}, headers: {})
-      request(:post, path, body: body, params: params, headers: headers)
+    def post(path, body: nil, params: {}, headers: {}, idempotency_key: nil)
+      request(:post, path, body: body, params: params, headers: idempotency_headers(headers, idempotency_key))
     end
 
-    def put(path, body: nil, params: {}, headers: {})
-      request(:put, path, body: body, params: params, headers: headers)
+    def put(path, body: nil, params: {}, headers: {}, idempotency_key: nil)
+      request(:put, path, body: body, params: params, headers: idempotency_headers(headers, idempotency_key))
     end
 
     private
@@ -66,6 +67,12 @@ module Lipwa
       req.params.update(params) if params && !params.empty?
       req.headers.update(headers)
       req.body = body if body
+    end
+
+    def idempotency_headers(headers, idempotency_key)
+      return headers unless idempotency_key
+
+      headers.merge(IDEMPOTENCY_HEADER => idempotency_key)
     end
 
     def connection

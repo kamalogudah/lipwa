@@ -49,14 +49,14 @@ module Lipwa
       setting :token_url
       setting :clock
 
-      def forex_rates(currency_code:, amount:, to_currency:, country_code: nil)
+      def forex_rates(currency_code:, amount:, to_currency:, country_code: nil, idempotency_key: nil)
         body = {
           countryCode: country_code || self.class.config.country_code,
           currencyCode: currency_code,
           amount: format_amount(amount),
           toCurrency: to_currency
         }
-        response = http.post(PATHS[:forex], body: body)
+        response = http.post(PATHS[:forex], body: body, idempotency_key: idempotency_key)
         build_jenga_response(response.body)
       rescue Lipwa::GatewayError => e
         Failure(e)
@@ -98,18 +98,18 @@ module Lipwa
               "#{self.class} is missing #{missing.join("/")} — set them via .configure"
       end
 
-      def bank_transfer_request(params)
+      def bank_transfer_request(params, idempotency_key)
         path = PATHS.fetch(params[:rail])
         body = params[:rail] == :bill_payment ? bill_payment_body(params) : bank_transfer_body(params)
-        http.post(path, body: body)
+        http.post(path, body: body, idempotency_key: idempotency_key)
       end
 
-      def bank_balance_request(params)
+      def bank_balance_request(params, idempotency_key)
         country = self.class.config.country_code
-        http.get("#{PATHS[:balance]}/#{country}/#{params[:account_number]}")
+        http.get("#{PATHS[:balance]}/#{country}/#{params[:account_number]}", idempotency_key: idempotency_key)
       end
 
-      def bank_statement_request(params)
+      def bank_statement_request(params, idempotency_key)
         date = request_date
         body = {
           countryCode: self.class.config.country_code,
@@ -117,7 +117,7 @@ module Lipwa
           fromDate: (params[:from_date] || date).iso8601,
           toDate: (params[:to_date] || date).iso8601
         }
-        http.post(PATHS[:statement], body: body)
+        http.post(PATHS[:statement], body: body, idempotency_key: idempotency_key)
       end
 
       def bank_transfer_body(params)
@@ -167,8 +167,8 @@ module Lipwa
       end
 
       # Provider-specific implementation behind the shared Disbursement API.
-      def perform_disburse(params)
-        response = http.post(PATHS[:mobile], body: mobile_money_body(params))
+      def perform_disburse(params, idempotency_key)
+        response = http.post(PATHS[:mobile], body: mobile_money_body(params), idempotency_key: idempotency_key)
         build_jenga_response(response.body)
       rescue Lipwa::GatewayError => e
         Failure(e)
