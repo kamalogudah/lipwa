@@ -16,6 +16,14 @@ gateway.capability?(:bank_transfer) # => true{% endhighlight %}
 | `status_query` | `status` | M-Pesa |
 | `refund` | `refund` | M-Pesa |
 | `bank_transfer` | `transfer`, `balance`, `statement` | Co-op, Jenga |
+| `lightning_invoice` | `create_invoice`, `check_invoice` | LNbits-backed gateways |
+
+Lightning invoice amounts are positive integer satoshis (`amount_sats`), not
+`Lipwa::Money` values. A created invoice's BOLT11 string is stored in
+`response.raw["payment_request"]`; its payment hash is
+`response.provider_reference`. Checking an unpaid invoice still returns
+`Success(Response)`, with `response.success? == false`.
+
 
 ## Collection
 
