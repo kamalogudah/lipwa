@@ -31,6 +31,20 @@ class HttpAdapterTest < Minitest::Test
     stubs.verify_stubbed_calls
   end
 
+  def test_sends_idempotency_key_header
+    stubs = Faraday::Adapter::Test::Stubs.new do |stub|
+      stub.post("/payments") do |env|
+        assert_equal "payment-123", env.request_headers["Idempotency-Key"]
+        [200, {}, ""]
+      end
+    end
+    adapter = Lipwa::HttpAdapter.new(base_url: "https://example.com", stubs: stubs)
+
+    adapter.post("/payments", idempotency_key: "payment-123")
+
+    stubs.verify_stubbed_calls
+  end
+
   def test_auth_strategy_is_applied_to_every_request
     stubs = Faraday::Adapter::Test::Stubs.new do |stub|
       stub.get("/secure") do |env|
@@ -63,7 +77,8 @@ class HttpAdapterTest < Minitest::Test
   def test_retries_on_5xx_up_to_the_configured_max
     attempts = 0
     stubs = Faraday::Adapter::Test::Stubs.new do |stub|
-      stub.get("/flaky") do
+      stub.get("/flaky") do |env|
+        assert_equal "retry-123", env.request_headers["Idempotency-Key"]
         attempts += 1
         attempts < 3 ? [503, {}, ""] : [200, {}, "ok"]
       end
@@ -74,7 +89,7 @@ class HttpAdapterTest < Minitest::Test
       retry_options: { max: 2, interval: 0 }
     )
 
-    response = adapter.get("/flaky")
+    response = adapter.get("/flaky", idempotency_key: "retry-123")
 
     assert_equal 200, response.status
     assert_equal 3, attempts

@@ -28,29 +28,28 @@ module Lipwa
 
       # rubocop:disable Metrics/ParameterLists
       def disburse(command_id:, amount:, party_b:, remarks:, result_url:, queue_timeout_url:, occasion: nil,
-                   account_reference: nil)
-        validate_and_disburse(
-          command_id: command_id, amount: amount, party_b: party_b, remarks: remarks,
-          result_url: result_url, queue_timeout_url: queue_timeout_url,
-          occasion: occasion, account_reference: account_reference
-        )
+                   account_reference: nil, idempotency_key: nil)
+        args = { command_id: command_id, amount: amount, party_b: party_b, remarks: remarks,
+                 result_url: result_url, queue_timeout_url: queue_timeout_url,
+                 occasion: occasion, account_reference: account_reference }
+        validate_and_disburse(args, idempotency_key)
       end
       # rubocop:enable Metrics/ParameterLists
 
       private
 
-      def validate_and_disburse(args)
+      def validate_and_disburse(args, idempotency_key)
         validation = CONTRACT.call(args)
         return Failure(Lipwa::ValidationError.new(validation)) if validation.failure?
 
-        perform_disburse(validation.to_h)
+        perform_disburse(validation.to_h, idempotency_key)
       end
 
-      def perform_disburse(params)
+      def perform_disburse(params, idempotency_key)
         ensure_disbursement_config_present!
         path = B2C_COMMAND_IDS.include?(params[:command_id]) ? B2C_PATH : B2B_PATH
 
-        response = http.post(path, body: disbursement_body(params))
+        response = http.post(path, body: disbursement_body(params), idempotency_key: idempotency_key)
 
         build_disbursement_response(response.body)
       rescue Lipwa::GatewayError => e

@@ -146,6 +146,21 @@ result = Lipwa.gateway(:mpesa).stk_push(
   callback_url: "https://example.com/webhooks/mpesa/stk"
 )
 
+To make application-level retries safe, pass the same `idempotency_key` on
+every attempt. Lipwa sends it as the standard `Idempotency-Key` header on
+every gateway operation; the provider determines how long keys are retained.
+Generate a new key for each distinct operation.
+
+```ruby
+result = Lipwa.gateway(:mpesa).stk_push(
+  amount: Lipwa::Money.new(amount: 100, currency: "KES"),
+  phone_number: "254712345678",
+  account_reference: "ORDER-123",
+  callback_url: "https://example.com/webhooks/mpesa/stk",
+  idempotency_key: "stk-order-123"
+)
+```
+
 result.either(
   ->(response) { response.provider_reference }, # CheckoutRequestID
   ->(error) { logger.error(error.message) }
