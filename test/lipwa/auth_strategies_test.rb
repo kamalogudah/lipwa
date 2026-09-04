@@ -43,6 +43,28 @@ class AuthStrategiesTest < Minitest::Test
     assert_raises(ArgumentError) { Lipwa::AuthStrategies::BearerToken.new("static-token") }
   end
 
+  def test_api_key_sets_default_header
+    env = new_env
+
+    Lipwa::AuthStrategies::ApiKey.new("secret-key").apply(env)
+
+    assert_equal "secret-key", env.request_headers["X-Api-Key"]
+  end
+
+  def test_api_key_sets_custom_header
+    env = new_env
+
+    Lipwa::AuthStrategies::ApiKey.new("secret-key", header: "Api-Key").apply(env)
+
+    assert_equal "secret-key", env.request_headers["Api-Key"]
+  end
+
+  def test_api_key_rejects_blank_key
+    [nil, "", "   "].each do |key|
+      assert_raises(ArgumentError) { Lipwa::AuthStrategies::ApiKey.new(key) }
+    end
+  end
+
   private
 
   def new_env

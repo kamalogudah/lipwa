@@ -221,6 +221,25 @@ class HttpAdapterTest < Minitest::Test
     refute_match(/super-secret-token/, io.string)
   end
 
+  def test_logger_redacts_api_key_header
+    logger = CollectingLogger.new([])
+    stubs = Faraday::Adapter::Test::Stubs.new do |stub|
+      stub.get("/secure") { [200, {}, ""] }
+    end
+    adapter = Lipwa::HttpAdapter.new(
+      base_url: "https://example.com",
+      auth_strategy: Lipwa::AuthStrategies::ApiKey.new("lnbits-secret-key"),
+      logger: logger,
+      stubs: stubs
+    )
+
+    adapter.get("/secure")
+
+    _level, event = logger.events.fetch(0)
+    assert_equal "[REDACTED]", event.dig(:request, :headers, "X-Api-Key")
+    refute_match(/lnbits-secret-key/, event.inspect)
+  end
+
   def test_logger_emits_structured_redacted_event
     logger = CollectingLogger.new([])
     stubs = Faraday::Adapter::Test::Stubs.new do |stub|
