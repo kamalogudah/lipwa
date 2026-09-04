@@ -69,6 +69,12 @@ outcome arrives asynchronously at `callback_url`.
 | `:coop_bank` | `bank_transfer`: transfer, balance, statement |
 | `:jenga` | `bank_transfer`, `disbursement`, plus `forex_rates` |
 
+Gateways that include `lightning_invoice` accept `amount_sats` as a positive
+integer count of satoshis. Lightning amounts intentionally do not use
+`Lipwa::Money` or `Types::Currency`. The BOLT11 invoice is available as
+`response.raw["payment_request"]`, and `response.provider_reference` is its
+payment hash.
+
 ## Money
 
 `Lipwa::Money` stores non-negative amounts as constrained `BigDecimal` values.
