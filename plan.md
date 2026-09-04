@@ -51,8 +51,10 @@ only those methods are expected to exist on it.
   structured error, not a cryptic HTTP 400 from the provider.
 - **Config via `Dry::Configurable`.** Each gateway class exposes its own
   settable, typed config block (`consumer_key`, `shortcode`, `passkey`,
-  `env: :sandbox | :production`, timeouts). Global `Lipwa.configure` block
-  sets shared defaults (logger, default timeout, faraday adapter).
+  `env: :sandbox | :production`, timeouts). Global `Lipwa.configure` sets
+  shared defaults (logger, default timeout, Faraday adapter). For
+  multi-tenant applications, `Lipwa.context` snapshots those defaults and
+  applies isolated per-gateway overrides without mutating process-wide state.
 - **Registry via `Dry::Container` + `Dry::System`-style auto-registration.**
   `Lipwa::Gateways.register(:mpesa, Lipwa::Gateways::Mpesa)` — lets
   consumers do `Lipwa.gateway(:mpesa).stk_push(...)` without knowing the
@@ -247,7 +249,12 @@ event = Lipwa::Gateways::Mpesa.parse_webhook(request.body.read, headers: request
 7. **Card rails (stretch)** — Pesapal / Flutterwave / Paystack as
    `Purchase`/`Authorize`/`Capture`/`Void` implementers, proving the
    capability model also covers the ActiveMerchant-shaped case.
-8. **Lightning Network (LNbits), receive-only** — new `AuthStrategies::ApiKey`,
+8. **Multi-tenant configuration** — introduce immutable `Lipwa::Context`
+   snapshots, instance-owned gateway/global configuration, context-local
+   gateway memoization, and concurrency/isolation coverage. Preserve
+   `Lipwa.configure`, gateway-class `.configure`, and `Lipwa.gateway` as the
+   backward-compatible process-wide API.
+9. **Lightning Network (LNbits), receive-only** — new `AuthStrategies::ApiKey`,
    `LightningInvoice` capability (`#create_invoice`, `#check_invoice`),
    `Lipwa::Gateways::Lnbits`, `Lipwa::Webhooks::Lnbits` (shared-secret-token
    verification, no HMAC available from LNbits). Proves the capability model
@@ -262,6 +269,14 @@ event = Lipwa::Gateways::Mpesa.parse_webhook(request.body.read, headers: request
   KES, but no work goes into other currencies until a provider actually
   needs one.
 
+- **Global and multi-tenant configuration**: retain `Lipwa.configure` and
+  gateway-class `.configure` as process-wide defaults, and add explicit
+  `Lipwa::Context` objects for tenant-specific overrides. A context snapshots
+  global and provider configuration when it is built, owns and memoizes its
+  gateway instances, and does not observe later global reconfiguration.
+  Context configuration is mutable only during construction and frozen before
+  use. No ambient thread-local current-tenant state is introduced.
+
 ## 12. Open questions to confirm before/while building
 
 - Sync vs. async webhook story: does the gem ship a Rack/Rails-agnostic
@@ -269,10 +284,6 @@ event = Lipwa::Gateways::Mpesa.parse_webhook(request.body.read, headers: request
   **Resolved for LNbits**: parser-only, same as M-Pesa — no Rack/Rails
   controller helper is being added for this gateway either. Still an open
   question for whether the gem ever adds one generically.
-- Multi-tenant credentials: is per-process global gateway config
-  (`Dry::Configurable` class-level) sufficient, or do we need per-instance
-  configured gateway objects for apps serving multiple merchants/accounts
-  from one process?
 - LNbits webhook trust model: since LNbits doesn't HMAC-sign webhooks, v1
   uses an integrator-minted shared-secret token embedded in the `webhook_url`
   itself, verified via constant-time comparison, with `#check_invoice`
