@@ -70,13 +70,15 @@ backends to register their own gateway class later without changing this API.
 ### Configuration
 
 Configure the URL of your hosted or self-hosted LNbits instance and its scoped
-invoice/read key. Do not supply an admin key: receiving payments only requires
-the less-privileged invoice key.
+invoice/read key. Receiving payments only requires this less-privileged key.
+Configure the separate admin key only when the application sends payments.
 
 ```ruby
 Lipwa::Gateways::Lnbits.configure do |config|
   config.base_url = ENV.fetch("LNBITS_BASE_URL")
   config.invoice_key = ENV.fetch("LNBITS_INVOICE_KEY")
+  # Optional and deliberately separate: only configure this when sending.
+  config.admin_key = ENV["LNBITS_ADMIN_KEY"]
 end
 ```
 
@@ -110,6 +112,30 @@ status.raw["paid"]   # the provider's raw payment status
 An unpaid invoice check is still a successful `Dry::Monads::Result`; inspect
 `Lipwa::Response#success?` to distinguish paid from unpaid. `Failure` is
 reserved for validation and transport errors.
+
+### Outbound payments
+
+Paying a BOLT11 invoice requires the LNbits wallet admin key. This credential
+can spend the wallet balance and is never used as a fallback for `invoice_key`:
+
+```ruby
+payment_result = lnbits.pay_invoice(bolt11: "lnbc...")
+payment = payment_result.value!
+
+if payment.success?
+  puts "settled: #{payment.provider_reference}"
+elsif payment.raw["status"] == "pending"
+  # Reconcile later; do not submit the invoice again.
+  payment = lnbits.check_payment(
+    payment_hash: payment.provider_reference
+  ).value!
+end
+```
+
+`pay_invoice` is a synchronous submission, but settlement can remain pending
+or become indeterminate if the request times out. A timeout is not proof of
+failure and must not trigger an automatic retry. Reconcile the original
+payment with `check_payment` before taking further action.
 
 ### Webhooks
 
@@ -172,7 +198,7 @@ head :ok
 | `:mpesa` | `stk_push`, `c2b`, `disbursement`, `status_query`, `refund` |
 | `:coop_bank` | `bank_transfer`: transfer, balance, statement |
 | `:jenga` | `bank_transfer`, `disbursement`, plus `forex_rates` |
-| `:lnbits` | `lightning_invoice`: create and check receive-only invoices |
+| `:lnbits` | `lightning_invoice`: receive; `lightning_payment`: pay and reconcile |
 
 ## Money
 
