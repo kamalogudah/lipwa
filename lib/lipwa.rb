@@ -27,10 +27,18 @@ require_relative "lipwa/contracts/status_query_contract"
 require_relative "lipwa/capabilities/status_query"
 require_relative "lipwa/contracts/bank_transfer_contract"
 require_relative "lipwa/capabilities/bank_transfer"
+require_relative "lipwa/contracts/card_payment_contract"
+require_relative "lipwa/contracts/card_transaction_contract"
+require_relative "lipwa/capabilities/purchase"
+require_relative "lipwa/capabilities/authorize"
+require_relative "lipwa/capabilities/capture"
+require_relative "lipwa/capabilities/void"
 require_relative "lipwa/gateways/mpesa"
 require_relative "lipwa/gateways/coop_bank"
 
 require_relative "lipwa/gateways/jenga"
+require_relative "lipwa/gateways/pesapal"
+require_relative "lipwa/gateways/flutterwave"
 # Unified payment gateway abstraction for African payment providers.
 module Lipwa
   def self.gateway(name)
