@@ -65,6 +65,47 @@ get it. Configuring only what you actually use is fine; each capability
 raises `Lipwa::ConfigurationError` at call time if something it needs is
 missing, not at load time.
 
+For Jenga HQ:
+
+```ruby
+Lipwa::Gateways::Jenga.configure do |c|
+  c.env = :sandbox # or :production
+  c.api_key = ENV["JENGA_API_KEY"]
+  c.merchant_code = ENV["JENGA_MERCHANT_CODE"]
+  c.consumer_secret = ENV["JENGA_CONSUMER_SECRET"]
+  c.private_key = File.read(ENV["JENGA_PRIVATE_KEY_PATH"])
+  c.source_account = ENV["JENGA_SOURCE_ACCOUNT"]
+  c.source_name = ENV["JENGA_SOURCE_NAME"]
+  c.country_code = "KE"
+  c.partner_id = ENV["JENGA_PARTNER_ID"] # bill payments only
+end
+```
+
+Jenga access tokens are cached and refreshed automatically. Each operation
+is signed with the endpoint's required RSA-SHA256 formula and sent in the
+`Signature` header. Register the matching public key in Jenga HQ; never
+commit the private key.
+
+Bank transfers support `:internal`, `:pesalink`, `:rtgs`, `:swift`, and
+`:bill_payment` rails:
+
+```ruby
+result = Lipwa.gateway(:jenga).transfer(
+  rail: :rtgs,
+  amount: Lipwa::Money.new(amount: 1_000, currency: "KES"),
+  source_account: ENV["JENGA_SOURCE_ACCOUNT"],
+  destination_account: "0123456789",
+  destination_bank_code: "68",
+  destination_name: "Recipient Name",
+  reference: "TRANSFER-123",
+  narration: "Supplier payment"
+)
+
+Lipwa.gateway(:jenga).balance(account_number: ENV["JENGA_SOURCE_ACCOUNT"])
+Lipwa.gateway(:jenga).statement(account_number: ENV["JENGA_SOURCE_ACCOUNT"])
+Lipwa.gateway(:jenga).forex_rates(currency_code: "KES", amount: 1_000, to_currency: "USD")
+```
+
 Fetch a configured gateway by name instead of referencing the class
 directly:
 
