@@ -5,7 +5,7 @@ require_relative "../money"
 module Lipwa
   module Contracts
     class BankTransferContract < Dry::Validation::Contract
-      RAILS = %i[internal rtgs pesalink bill_payment].freeze
+      RAILS = %i[internal rtgs pesalink swift bill_payment].freeze
       schema do
         required(:rail).filled(:symbol)
         required(:amount).filled
@@ -25,7 +25,7 @@ module Lipwa
         key.failure("must be greater than zero") unless value.amount.positive?
       end
       rule(:destination_bank_code, :rail) do
-        if values[:rail] == :rtgs && values[:destination_bank_code].to_s.empty?
+        if %i[rtgs swift].include?(values[:rail]) && values[:destination_bank_code].to_s.empty?
           key(:destination_bank_code).failure("is required for RTGS transfers")
         end
       end

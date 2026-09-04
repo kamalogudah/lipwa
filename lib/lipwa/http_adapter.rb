@@ -80,13 +80,14 @@ module Lipwa
       conn.request :retry, @retry_options
       conn.request :json
       conn.response :json, content_type: /\bjson$/
-      configure_logger(conn) if logger
       conn.use AuthMiddleware, auth_strategy
+      configure_logger(conn) if logger
     end
 
     def configure_logger(conn)
       conn.response :logger, logger, headers: true, bodies: true do |l|
         l.filter(/(Authorization: )(.+)/, '\1[REDACTED]')
+        l.filter(/(Signature: )(.+)/i, '\1[REDACTED]')
       end
     end
 
