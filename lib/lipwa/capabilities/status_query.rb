@@ -53,6 +53,10 @@ module Lipwa
         Failure(e)
       end
 
+      def status_query_request(params)
+        http.post(PATH, body: status_query_body(params))
+      end
+
       def status_query_body(params)
         {
           Initiator: self.class.config.initiator_name,
