@@ -39,6 +39,7 @@ require_relative "lipwa/gateways/coop_bank"
 require_relative "lipwa/gateways/jenga"
 require_relative "lipwa/gateways/pesapal"
 require_relative "lipwa/gateways/flutterwave"
+require_relative "lipwa/gateways/paystack"
 # Unified payment gateway abstraction for African payment providers.
 module Lipwa
   def self.gateway(name)
