@@ -23,6 +23,8 @@ VCR.configure do |config|
     "Basic #{Base64.strict_encode64("test-consumer-key:test-consumer-secret")}"
   end
   config.filter_sensitive_data("<MPESA_ACCESS_TOKEN>") { "SANDBOX-TEST-ACCESS-TOKEN" }
+  config.filter_sensitive_data("<LNBITS_INVOICE_KEY>") { "test-lnbits-invoice-key" }
+  config.filter_sensitive_data("<LNBITS_ADMIN_KEY>") { "test-lnbits-admin-key" }
 end
 
 WebMock.disable_net_connect!(allow_localhost: true)
