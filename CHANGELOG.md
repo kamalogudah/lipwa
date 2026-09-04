@@ -1,5 +1,8 @@
 ## [0.1.1]
 
+- Add a capability-focused documentation site and rewrite the project README
+- Add constrained decimal amounts and currency-safe arithmetic to `Lipwa::Money`
+- Formalize transient HTTP retries with bounded exponential backoff and idempotency-safe writes
 - Add structured HTTP logging with recursive credential and secret redaction
 - Add `idempotency_key:` support across gateway calls via the `Idempotency-Key` header
 - Add Jenga receive-payment IPN parsing and Basic Auth signature verification

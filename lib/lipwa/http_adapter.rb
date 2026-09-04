@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
+require "bigdecimal"
 require "faraday"
 require "faraday/retry"
+require "json"
 require_relative "errors"
 require_relative "auth_strategies"
 require_relative "logging"
@@ -14,17 +16,27 @@ module Lipwa
   # the same request path without HttpAdapter knowing which is which.
   class HttpAdapter
     IDEMPOTENCY_HEADER = "Idempotency-Key"
+    RETRYABLE_METHODS = %i[get head options].freeze
+    RETRYABLE_STATUSES = [429, 500, 502, 503, 504].freeze
+    RETRYABLE_EXCEPTIONS = Faraday::Retry::Middleware::DEFAULT_EXCEPTIONS.freeze
+    RETRY_IF_IDEMPOTENT = lambda do |env, _exception|
+      value = env.request_headers[IDEMPOTENCY_HEADER]
+      !value.nil? && !value.empty?
+    end
+
     DEFAULT_RETRY_OPTIONS = {
       max: 2,
       interval: 0.5,
       interval_randomness: 0.5,
       backoff_factor: 2,
-      retry_statuses: [429, 500, 502, 503, 504],
-      methods: %i[get post put patch delete],
-      exceptions: Faraday::Retry::Middleware::DEFAULT_EXCEPTIONS
+      max_interval: 5,
+      retry_statuses: RETRYABLE_STATUSES,
+      methods: RETRYABLE_METHODS,
+      exceptions: RETRYABLE_EXCEPTIONS,
+      retry_if: RETRY_IF_IDEMPOTENT
     }.freeze
 
-    attr_reader :base_url, :auth_strategy, :timeout, :open_timeout, :logger, :adapter
+    attr_reader :base_url, :auth_strategy, :timeout, :open_timeout, :logger, :adapter, :retry_options
 
     # rubocop:disable Metrics/ParameterLists
     def initialize(base_url:, auth_strategy: AuthStrategies::None.new, timeout: 10,
@@ -35,7 +47,7 @@ module Lipwa
       @timeout = timeout
       @open_timeout = open_timeout
       @logger = logger
-      @retry_options = DEFAULT_RETRY_OPTIONS.merge(retry_options)
+      @retry_options = DEFAULT_RETRY_OPTIONS.merge(retry_options).freeze
       @stubs = stubs
       @adapter = adapter
     end
@@ -67,13 +79,28 @@ module Lipwa
       req.url(path)
       req.params.update(params) if params && !params.empty?
       req.headers.update(headers)
-      req.body = body if body
+      req.body = json_safe_decimals(body) if body
     end
 
     def idempotency_headers(headers, idempotency_key)
       return headers unless idempotency_key
 
       headers.merge(IDEMPOTENCY_HEADER => idempotency_key)
+    end
+
+    # JSON otherwise encodes BigDecimal as a quoted scientific-notation string.
+    # A fragment preserves the exact base-10 value as a JSON number.
+    def json_safe_decimals(value)
+      case value
+      when BigDecimal
+        JSON::Fragment.new(value.to_s("F"))
+      when Hash
+        value.transform_values { |item| json_safe_decimals(item) }
+      when Array
+        value.map { |item| json_safe_decimals(item) }
+      else
+        value
+      end
     end
 
     def connection
@@ -85,7 +112,7 @@ module Lipwa
     end
 
     def configure_middleware(conn)
-      conn.request :retry, @retry_options
+      conn.request :retry, retry_options
       conn.request :json
       conn.response :json, content_type: /\bjson$/
       conn.use AuthMiddleware, auth_strategy
