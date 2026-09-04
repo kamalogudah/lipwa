@@ -106,6 +106,23 @@ Lipwa.gateway(:jenga).statement(account_number: ENV["JENGA_SOURCE_ACCOUNT"])
 Lipwa.gateway(:jenga).forex_rates(currency_code: "KES", amount: 1_000, to_currency: "USD")
 ```
 
+Parse and authenticate Jenga receive-payment IPNs with the Basic Auth
+credentials registered alongside the callback URL in Jenga HQ:
+
+```ruby
+result = Lipwa::Webhook.parse_webhook(
+  provider: :jenga,
+  body: request.body.read,
+  headers: request.headers
+)
+
+event = result.value!
+event.verify_signature(
+  username: ENV["JENGA_WEBHOOK_USERNAME"],
+  password: ENV["JENGA_WEBHOOK_PASSWORD"]
+)
+```
+
 Fetch a configured gateway by name instead of referencing the class
 directly:
 
