@@ -16,6 +16,25 @@ gateway.capability?(:bank_transfer) # => true{% endhighlight %}
 | `status_query` | `status` | M-Pesa |
 | `refund` | `refund` | M-Pesa |
 | `bank_transfer` | `transfer`, `balance`, `statement` | Co-op, Jenga |
+| `lightning_invoice` | `create_invoice`, `check_invoice` | LNbits-backed gateways |
+| `lightning_payment` | `pay_invoice`, `check_payment` | LNbits-backed gateways |
+
+Lightning invoice amounts are positive integer satoshis (`amount_sats`), not
+`Lipwa::Money` values. A created invoice's BOLT11 string is stored in
+`response.raw["payment_request"]`; its payment hash is
+`response.provider_reference`. Checking an unpaid invoice still returns
+`Success(Response)`, with `response.success? == false`.
+
+Outbound Lightning payments use the separate `lightning_payment` capability
+and require an explicitly configured wallet admin key. That key can spend the
+wallet balance; it never replaces the receive-only invoice key. A payment may
+remain `pending`, and a transport timeout leaves its outcome unknown. Inspect
+`response.raw["status"]` and call `check_payment` to reconcile it; never retry
+an indeterminate payment automatically.
+
+{% highlight ruby %}lnbits.pay_invoice(bolt11: "lnbc...")
+lnbits.check_payment(payment_hash: "..."){% endhighlight %}
+
 
 ## Collection
 

@@ -1,6 +1,6 @@
 ---
 title: Webhooks
-description: Parse and verify M-Pesa and Jenga callbacks.
+description: Parse and verify M-Pesa, Jenga, and LNbits callbacks.
 ---
 
 <header class="page-title"><p class="eyebrow">Guide 04</p><h1>Webhooks</h1><p class="lead">Normalize provider payloads, then perform the provider-specific trust check before changing financial state.</p></header>
@@ -42,6 +42,22 @@ Jenga receive-payment IPNs normalize to `receive_payment`:
   username: ENV.fetch("JENGA_WEBHOOK_USERNAME"),
   password: ENV.fetch("JENGA_WEBHOOK_PASSWORD")
 ){% endhighlight %}
+
+## Verify LNbits
+
+LNbits does not HMAC-sign webhooks by default. Give each invoice a strong,
+random token in its webhook URL, persist that token alongside the payment hash,
+and compare the URL parameter when the callback arrives:
+
+{% highlight ruby %}return head :forbidden unless event.verify_signature(
+  expected_token: invoice.webhook_token,
+  provided_token: params[:token]
+){% endhighlight %}
+
+This is a shared-secret URL check, not proof that the webhook body came from
+LNbits. Anyone who learns the token can forge a payload. Always call
+`check_invoice(payment_hash: event.provider_reference)` and confirm its status
+before crediting funds; use the webhook only as a low-latency trigger.
 
 ## Processing checklist
 
