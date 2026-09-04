@@ -25,28 +25,28 @@ module Lipwa
 
       CONTRACT = Lipwa::Contracts::StatusQueryContract.new
 
-      def status(transaction_id: nil, message_reference: nil, remarks: nil, result_url: nil, # rubocop:disable Metrics/ParameterLists
-                 queue_timeout_url: nil, occasion: nil)
-        validate_and_query(
-          transaction_id: transaction_id, message_reference: message_reference,
-          remarks: remarks, result_url: result_url,
-          queue_timeout_url: queue_timeout_url, occasion: occasion
-        )
+      # rubocop:disable Metrics/ParameterLists
+      def status(transaction_id:, remarks:, result_url:, queue_timeout_url:, occasion: nil,
+                 idempotency_key: nil)
+        args = { transaction_id: transaction_id, remarks: remarks, result_url: result_url,
+                 queue_timeout_url: queue_timeout_url, occasion: occasion }
+        validate_and_query(args, idempotency_key)
       end
+      # rubocop:enable Metrics/ParameterLists
 
       private
 
-      def validate_and_query(args)
+      def validate_and_query(args, idempotency_key)
         validation = CONTRACT.call(args)
         return Failure(Lipwa::ValidationError.new(validation)) if validation.failure?
 
-        perform_status_query(validation.to_h)
+        perform_status_query(validation.to_h, idempotency_key)
       end
 
-      def perform_status_query(params)
+      def perform_status_query(params, idempotency_key)
         ensure_status_query_config_present!
 
-        response = status_query_request(params)
+        response = http.post(PATH, body: status_query_body(params), idempotency_key: idempotency_key)
 
         build_status_query_response(response.body)
       rescue Lipwa::GatewayError => e

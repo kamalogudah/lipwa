@@ -14,3 +14,5 @@ gem "rubocop", "~> 1.21"
 
 gem "vcr", "~> 6.2"
 gem "webmock", "~> 3.19"
+
+gem "jekyll", "~> 4.4", group: :docs

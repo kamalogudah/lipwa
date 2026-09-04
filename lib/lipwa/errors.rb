@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "logging"
+
 module Lipwa
   # Base class for everything the gem raises or wraps in a Failure.
   class Error < StandardError; end
@@ -41,8 +43,8 @@ module Lipwa
 
     def initialize(message, code: nil, raw: nil)
       @code = code
-      @raw = raw
-      super(message)
+      @raw = Logging::Redactor.call(raw)
+      super(Logging::Redactor.redact_string(message.to_s))
     end
   end
 end
