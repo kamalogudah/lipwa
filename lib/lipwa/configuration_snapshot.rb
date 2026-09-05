@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "configuration"
+require_relative "logging"
 
 module Lipwa
   # Copies setting data while preserving service objects such as loggers.
@@ -9,6 +10,10 @@ module Lipwa
 
     def finalize(config)
       config.values.transform_values! { |value| freeze_value(copy_value(value)) }
+      config.define_singleton_method(:inspect) do
+        values = Lipwa::Logging::Redactor.call(to_h)
+        "#<#{self.class} values=#{values.inspect}>"
+      end
       config.finalize!
       config.values.freeze
       config

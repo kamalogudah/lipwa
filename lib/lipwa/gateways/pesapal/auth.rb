@@ -16,18 +16,28 @@ module Lipwa
           @consumer_secret = consumer_secret
           @base_url = base_url
           @clock = clock
+          @mutex = Mutex.new
         end
 
         def initialize_copy(source)
           super
           @token = nil
           @expires_at = nil
+          @mutex = Mutex.new
+        end
+
+        def inspect
+          "#<#{self.class}:0x#{object_id.to_s(16)}>"
         end
 
         def call
           return @token if @token && @expires_at && @clock.call < @expires_at
 
-          fetch_token
+          @mutex.synchronize do
+            fetch_token unless @token && @expires_at && @clock.call < @expires_at
+          end
+
+          @token
         end
 
         private

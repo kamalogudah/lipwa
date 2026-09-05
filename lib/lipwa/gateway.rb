@@ -62,6 +62,12 @@ module Lipwa
       @http ||= build_http_adapter
     end
 
+    # Configuration contains credentials, so the default object inspection is
+    # deliberately replaced with a diagnostic that cannot serialize them.
+    def inspect
+      "#<#{self.class}:0x#{object_id.to_s(16)}>"
+    end
+
     private
 
     def build_http_adapter

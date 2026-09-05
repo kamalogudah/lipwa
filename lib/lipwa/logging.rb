@@ -10,7 +10,8 @@ module Lipwa
     # Produces sanitized copies of nested payloads without mutating caller data.
     module Redactor
       SECRET_NAMES = "authorization|signature|cookie|api[_-]?key|access[_-]?token|" \
-                     "refresh[_-]?token|token|secret|password|passkey|" \
+                     "refresh[_-]?token|token|consumer[_-]?key|client[_-]?id|" \
+                     "secret|password|passkey|" \
                      "security[_-]?credential|private[_-]?key"
       SENSITIVE_KEY = /(?:#{SECRET_NAMES})/i
       STRING_PATTERNS = [

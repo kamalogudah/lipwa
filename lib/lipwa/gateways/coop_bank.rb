@@ -22,6 +22,15 @@ module Lipwa
       setting :client_id
       setting :client_secret
       setting :token_url
+      setting :clock
+
+      def status(message_reference:, idempotency_key: nil)
+        response = http.post(STATUS_PATH, body: { MessageReference: message_reference },
+                                          idempotency_key: idempotency_key)
+        build_status_query_response(response.body)
+      rescue Lipwa::GatewayError => e
+        Failure(e)
+      end
 
       private
 
@@ -29,15 +38,18 @@ module Lipwa
         config = self.config
         api_key = config.api_key || config.client_id
         api_secret = config.api_secret || config.client_secret
-        unless api_key && api_secret
+        unless config.auth_strategy || (api_key && api_secret)
           raise Lipwa::ConfigurationError,
                 "#{self.class} is missing api_key/api_secret — set them via .configure"
         end
 
-        auth = Auth.new(client_id: api_key, client_secret: api_secret,
-                        token_url: config.token_url || TOKEN_URLS.fetch(config.env))
+        auth = config.auth_strategy || AuthStrategies::BearerToken.new(
+          Auth.new(client_id: api_key, client_secret: api_secret,
+                   token_url: config.token_url || TOKEN_URLS.fetch(config.env),
+                   clock: config.clock || -> { Time.now })
+        )
         HttpAdapter.new(base_url: config.base_url || BASE_URLS.fetch(config.env),
-                        auth_strategy: AuthStrategies::BearerToken.new(auth),
+                        auth_strategy: auth,
                         timeout: config.timeout || global_config.default_timeout,
                         open_timeout: config.open_timeout, logger: config.logger || global_config.logger,
                         adapter: global_config.adapter)
