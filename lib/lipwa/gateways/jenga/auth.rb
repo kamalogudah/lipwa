@@ -33,6 +33,10 @@ module Lipwa
           @mutex = Mutex.new
         end
 
+        def inspect
+          "#<#{self.class}:0x#{object_id.to_s(16)}>"
+        end
+
         def call
           return @token if fresh?
 

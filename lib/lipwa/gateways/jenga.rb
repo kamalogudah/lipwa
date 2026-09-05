@@ -72,7 +72,8 @@ module Lipwa
             api_key: config.api_key,
             merchant_code: config.merchant_code,
             consumer_secret: config.consumer_secret,
-            token_url: config.token_url || TOKEN_URLS.fetch(config.env)
+            token_url: config.token_url || TOKEN_URLS.fetch(config.env),
+            clock: config.clock || -> { Time.now }
           ),
           private_key: config.private_key,
           signature_payload: method(:signature_payload)
