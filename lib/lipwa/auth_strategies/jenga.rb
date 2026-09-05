@@ -23,6 +23,11 @@ module Lipwa
         @signature_payload = signature_payload
       end
 
+      def initialize_copy(source)
+        super
+        @token_provider = @token_provider.dup
+      end
+
       def apply(env)
         payload = @signature_payload.call(env)
         raise ArgumentError, "signature_payload must return a String" unless payload.is_a?(String)

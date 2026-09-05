@@ -26,6 +26,13 @@ module Lipwa
           @mutex = Mutex.new
         end
 
+        def initialize_copy(source)
+          super
+          @token = nil
+          @expires_at = nil
+          @mutex = Mutex.new
+        end
+
         def call
           return @token if fresh?
 

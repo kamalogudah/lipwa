@@ -122,6 +122,70 @@ class ContextTest < Minitest::Test
     assert_requested request
   end
 
+  def test_provider_timeout_wins_over_context_shared_timeout
+    context = Lipwa.context do |config|
+      config.default_timeout = 20
+      config.gateway(:paystack) do |provider|
+        provider.timeout = 4
+        provider.secret_key = "secret"
+      end
+    end
+    assert_equal 4, context.gateway(:paystack).http.timeout
+  end
+
+  def test_contexts_own_http_auth_and_token_caches
+    contexts = Array.new(2) do
+      Lipwa.context do |config|
+        config.gateway(:mpesa) do |provider|
+          provider.consumer_key = "key"
+          provider.consumer_secret = "secret"
+          provider.shortcode = "123456"
+          provider.passkey = "passkey"
+        end
+      end
+    end
+    gateways = contexts.map { |context| context.gateway(:mpesa) }
+    refute_same gateways[0].http, gateways[1].http
+    refute_same gateways[0].http.auth_strategy, gateways[1].http.auth_strategy
+    auth = gateways.map { |gateway| gateway.http.auth_strategy.instance_variable_get(:@token_provider) }
+    refute_same auth[0], auth[1]
+    refute_same auth[0].instance_variable_get(:@http), auth[1].instance_variable_get(:@http)
+    request = stub_request(:get, "https://sandbox.safaricom.co.ke/oauth/v1/generate")
+              .with(query: { grant_type: "client_credentials" })
+              .to_return(body: { access_token: "token", expires_in: 3600 }.to_json,
+                         headers: { "Content-Type" => "application/json" })
+    auth.each { |provider| 2.times { assert_equal "token", provider.call } }
+    assert_requested request, times: 2
+  end
+
+  def test_configured_bearer_strategy_copies_its_token_client_and_resets_cache
+    token_client = Lipwa::Gateways::Mpesa::Auth.new(consumer_key: "key", consumer_secret: "secret")
+    token_client.instance_variable_set(:@token, "old-token")
+    strategy = Lipwa::AuthStrategies::BearerToken.new(token_client)
+    contexts = Array.new(2) do
+      Lipwa.context { |config| config.gateway(:paystack) { |provider| provider.auth_strategy = strategy } }
+    end
+    auth = contexts.map { |context| context.gateway(:paystack).http.auth_strategy }
+    refute_same strategy, auth.first
+    refute_same auth.first, auth.last
+    clients = auth.map { |item| item.instance_variable_get(:@token_provider) }
+    refute_same token_client, clients.first
+    refute_same clients.first, clients.last
+    clients.each { |client| assert_nil client.instance_variable_get(:@token) }
+    refute_same clients.first.instance_variable_get(:@mutex), clients.last.instance_variable_get(:@mutex)
+  end
+
+  def test_configured_auth_factory_builds_a_strategy_for_each_gateway
+    factory = -> { Lipwa::AuthStrategies::ApiKey.new("tenant") }
+    contexts = Array.new(2) do
+      Lipwa.context { |config| config.gateway(:paystack) { |provider| provider.auth_strategy = factory } }
+    end
+    first, second = contexts.map { |context| context.gateway(:paystack) }
+    refute_same first.http.auth_strategy, second.http.auth_strategy
+    assert_same first, contexts.first.gateway(:paystack)
+    assert_same Lipwa.gateway(:paystack), Lipwa.gateway("paystack")
+  end
+
   def test_unregistered_names_keep_registry_errors
     context = Lipwa.context
     assert_raises(Dry::Container::KeyError) { context.gateway(:unknown_context_gateway) }

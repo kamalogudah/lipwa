@@ -14,6 +14,12 @@ module Lipwa
         @header = header
       end
 
+      def initialize_copy(source)
+        super
+        @key = @key.dup
+        @header = @header.dup
+      end
+
       def apply(env)
         env.request_headers[@header] = @key
       end
