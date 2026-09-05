@@ -1,0 +1,13 @@
+/log/*
+/tmp/*
+!/log/.keep
+!/tmp/.keep
+/storage/*
+!/storage/.keep
+/db/*.sqlite3
+/db/*.sqlite3-*
+.env
+.byebug_history
+
+# Ignore master key for decrypting credentials and more.
+/config/master.key
