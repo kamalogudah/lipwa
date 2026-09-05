@@ -59,11 +59,11 @@ module Lipwa
 
       def status_query_body(params)
         {
-          Initiator: self.class.config.initiator_name,
+          Initiator: config.initiator_name,
           SecurityCredential: security_credential,
           CommandID: "TransactionStatusQuery",
           TransactionID: params[:transaction_id],
-          PartyA: self.class.config.shortcode,
+          PartyA: config.shortcode,
           IdentifierType: IDENTIFIER_TYPE
         }.merge(shared_status_query_fields(params))
       end
@@ -79,8 +79,8 @@ module Lipwa
 
       def security_credential
         Lipwa::Gateways::Mpesa::SecurityCredential.encrypt(
-          self.class.config.initiator_password,
-          cert: self.class.config.security_credential_cert
+          config.initiator_password,
+          cert: config.security_credential_cert
         )
       end
 
@@ -95,7 +95,7 @@ module Lipwa
       end
 
       def ensure_status_query_config_present!
-        config = self.class.config
+        config = self.config
         return if config.initiator_name && config.initiator_password && config.security_credential_cert
 
         raise Lipwa::ConfigurationError,

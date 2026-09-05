@@ -65,6 +65,12 @@ module Lipwa
       request(:put, path, body: body, params: params, headers: idempotency_headers(headers, idempotency_key))
     end
 
+    # Auth strategies may own API keys or OAuth clients. Avoid recursively
+    # exposing them through the adapter's default instance-variable dump.
+    def inspect
+      "#<#{self.class}:0x#{object_id.to_s(16)}>"
+    end
+
     private
 
     def request(method, path, params: {}, body: nil, headers: {})

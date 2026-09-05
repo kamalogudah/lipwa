@@ -8,6 +8,10 @@ module Lipwa
     # timestamp, whatever the provider needs) without HttpAdapter knowing
     # which kind of auth it's dealing with.
     class Base
+      def inspect
+        "#<#{self.class}:0x#{object_id.to_s(16)}>"
+      end
+
       # env is a Faraday::Env — mutate env.request_headers / env.body
       # in place. Must be implemented by subclasses.
       def apply(env)

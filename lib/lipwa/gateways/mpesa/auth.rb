@@ -31,22 +31,38 @@ module Lipwa
         # token that goes stale mid-flight.
         EXPIRY_BUFFER = 60
 
-        def initialize(consumer_key:, consumer_secret:, env: :sandbox, http: nil, clock: -> { Time.now })
+        # rubocop:disable Metrics/ParameterLists
+        def initialize(consumer_key:, consumer_secret:, env: :sandbox, base_url: nil, http: nil, clock: -> { Time.now })
           ensure_credentials_present!(consumer_key, consumer_secret)
 
           @consumer_key = consumer_key
           @consumer_secret = consumer_secret
           @clock = clock
-          @http = http || Lipwa::HttpAdapter.new(base_url: base_url_for(env))
+          @http = http || Lipwa::HttpAdapter.new(base_url: base_url || base_url_for(env))
           @mutex = Mutex.new
           @token = nil
           @expires_at = nil
         end
+        # rubocop:enable Metrics/ParameterLists
 
         # Returns a cached access token, or fetches (and caches) a new
         # one if there's none yet or the cached one is about to expire.
         # Safe to call concurrently: only one refresh happens in flight,
         # other callers block on it and reuse its result.
+        def initialize_copy(source)
+          super
+          @token = nil
+          @expires_at = nil
+          @mutex = Mutex.new
+          @http = Lipwa::HttpAdapter.new(base_url: @http.base_url, timeout: @http.timeout,
+                                         open_timeout: @http.open_timeout, logger: @http.logger,
+                                         adapter: @http.adapter)
+        end
+
+        def inspect
+          "#<#{self.class}:0x#{object_id.to_s(16)}>"
+        end
+
         def call
           return @token if fresh?
 

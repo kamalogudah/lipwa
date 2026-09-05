@@ -23,14 +23,14 @@ module Lipwa
       end
 
       def build_admin_http_adapter
-        config = self.class.config
+        config = self.config
         ensure_lnbits_admin_config_present!(config)
 
         HttpAdapter.new(**http_adapter_options(config, config.admin_key))
       end
 
       def build_http_adapter
-        config = self.class.config
+        config = self.config
         ensure_lnbits_config_present!(config)
 
         HttpAdapter.new(**http_adapter_options(config, config.invoice_key))
@@ -40,10 +40,10 @@ module Lipwa
         {
           base_url: config.base_url,
           auth_strategy: AuthStrategies::ApiKey.new(api_key),
-          timeout: config.timeout || Lipwa.config.default_timeout,
+          timeout: config.timeout || global_config.default_timeout,
           open_timeout: config.open_timeout,
-          logger: config.logger || Lipwa.config.logger,
-          adapter: Lipwa.config.adapter
+          logger: config.logger || global_config.logger,
+          adapter: global_config.adapter
         }
       end
 

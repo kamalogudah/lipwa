@@ -18,7 +18,13 @@ module Lipwa
           raise Lipwa::ConfigurationError, "#{gateway_class} must be a subclass of Lipwa::Gateway"
         end
 
-        super(key.to_sym, memoize: true) { gateway_class.new }
+        super(key.to_sym, memoize: true) { gateway_class.new }.tap do
+          (@gateway_classes ||= {})[key.to_s] = gateway_class
+        end
+      end
+
+      def gateway_classes
+        (@gateway_classes || {}).dup
       end
     end
   end
