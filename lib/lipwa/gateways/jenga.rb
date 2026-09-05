@@ -49,13 +49,14 @@ module Lipwa
       setting :token_url
       setting :clock
 
-      def forex_rates(currency_code:, amount:, to_currency:, country_code: nil, idempotency_key: nil)
+      def forex_rates(currency_code:, amount:, to_currency:, account_number: nil, country_code: nil, idempotency_key: nil)
         body = {
+          accountNumber: account_number,
           countryCode: country_code || config.country_code,
           currencyCode: currency_code,
           amount: format_amount(amount),
           toCurrency: to_currency
-        }
+        }.compact
         response = http.post(PATHS[:forex], body: body, idempotency_key: idempotency_key)
         build_jenga_response(response.body)
       rescue Lipwa::GatewayError => e

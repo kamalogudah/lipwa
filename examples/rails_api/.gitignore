@@ -1,0 +1,16 @@
+/log/*
+/tmp/*
+!/log/.keep
+!/tmp/.keep
+/storage/*
+!/storage/.keep
+/db/*.sqlite3
+/db/*.sqlite3-*
+.env
+.byebug_history
+# Jenga API signing keys
+/privatekey.pem
+/publickey.pem
+
+# Ignore master key for decrypting credentials and more.
+/config/master.key
