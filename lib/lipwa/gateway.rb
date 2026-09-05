@@ -41,6 +41,19 @@ module Lipwa
       end
     end
 
+    def initialize(config: nil, global_config: nil)
+      @config = config
+      @global_config = global_config
+    end
+
+    def config
+      @config || self.class.config
+    end
+
+    def global_config
+      @global_config || Lipwa.config
+    end
+
     def capability?(name)
       self.class.capabilities.include?(name.to_sym)
     end
@@ -52,16 +65,16 @@ module Lipwa
     private
 
     def build_http_adapter
-      config = self.class.config
+      config = self.config
       ensure_base_url_configured!(config)
 
       HttpAdapter.new(
         base_url: config.base_url,
         auth_strategy: config.auth_strategy || AuthStrategies::None.new,
-        timeout: config.timeout || Lipwa.config.default_timeout,
+        timeout: config.timeout || global_config.default_timeout,
         open_timeout: config.open_timeout,
-        logger: config.logger || Lipwa.config.logger,
-        adapter: Lipwa.config.adapter
+        logger: config.logger || global_config.logger,
+        adapter: global_config.adapter
       )
     end
 

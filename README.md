@@ -61,6 +61,33 @@ result.either(
 A successful STK response means M-Pesa accepted the request. The final payment
 outcome arrives asynchronously at `callback_url`.
 
+## Isolated configuration contexts
+
+Use an explicit context for each merchant or tenant. It snapshots the current
+`Lipwa.config` and all registered gateway configurations before applying overrides.
+
+```ruby
+tenant_context = Lipwa.context do |config|
+  config.default_timeout = 20
+
+  config.gateway(:mpesa) do |mpesa|
+    mpesa.consumer_key = tenant.mpesa_consumer_key
+    mpesa.consumer_secret = tenant.mpesa_consumer_secret
+    mpesa.shortcode = tenant.mpesa_shortcode
+    mpesa.passkey = tenant.mpesa_passkey
+  end
+end
+
+gateway = tenant_context.gateway(:mpesa)
+```
+
+`Lipwa::Context.new` accepts the same block. Settings are frozen when the block
+finishes, and typed overrides are validated during construction. Later global
+reconfiguration does not affect an existing context. Each context owns its gateway
+instances; pass the context explicitly to your application code. There is no
+thread-local tenant state. Logger and other service objects retain their identity;
+configuration strings, arrays, and hashes are copied and frozen.
+
 ## Lightning Network (LNbits)
 
 LNbits is the only Lightning backend supported today. The authentication

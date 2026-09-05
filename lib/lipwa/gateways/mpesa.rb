@@ -32,7 +32,7 @@ module Lipwa
       private
 
       def build_http_adapter
-        config = self.class.config
+        config = self.config
         ensure_mpesa_config_present!(config)
 
         HttpAdapter.new(**http_adapter_options(config))
@@ -42,10 +42,10 @@ module Lipwa
         {
           base_url: Auth::BASE_URLS.fetch(config.env),
           auth_strategy: AuthStrategies::BearerToken.new(build_auth(config)),
-          timeout: config.timeout || Lipwa.config.default_timeout,
+          timeout: config.timeout || global_config.default_timeout,
           open_timeout: config.open_timeout,
-          logger: config.logger || Lipwa.config.logger,
-          adapter: Lipwa.config.adapter
+          logger: config.logger || global_config.logger,
+          adapter: global_config.adapter
         }
       end
 
