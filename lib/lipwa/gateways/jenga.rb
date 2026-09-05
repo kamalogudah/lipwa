@@ -51,7 +51,7 @@ module Lipwa
 
       def forex_rates(currency_code:, amount:, to_currency:, country_code: nil, idempotency_key: nil)
         body = {
-          countryCode: country_code || self.class.config.country_code,
+          countryCode: country_code || config.country_code,
           currencyCode: currency_code,
           amount: format_amount(amount),
           toCurrency: to_currency
@@ -65,7 +65,7 @@ module Lipwa
       private
 
       def build_http_adapter
-        config = self.class.config
+        config = self.config
         ensure_jenga_config_present!(config)
         auth_strategy = config.auth_strategy || AuthStrategies::Jenga.new(
           token_provider: Auth.new(
@@ -81,10 +81,10 @@ module Lipwa
         HttpAdapter.new(
           base_url: config.base_url || BASE_URLS.fetch(config.env),
           auth_strategy: auth_strategy,
-          timeout: config.timeout || Lipwa.config.default_timeout,
+          timeout: config.timeout || global_config.default_timeout,
           open_timeout: config.open_timeout,
-          logger: config.logger || Lipwa.config.logger,
-          adapter: Lipwa.config.adapter
+          logger: config.logger || global_config.logger,
+          adapter: global_config.adapter
         )
       end
 
@@ -105,14 +105,14 @@ module Lipwa
       end
 
       def bank_balance_request(params, idempotency_key)
-        country = self.class.config.country_code
+        country = config.country_code
         http.get("#{PATHS[:balance]}/#{country}/#{params[:account_number]}", idempotency_key: idempotency_key)
       end
 
       def bank_statement_request(params, idempotency_key)
         date = request_date
         body = {
-          countryCode: self.class.config.country_code,
+          countryCode: config.country_code,
           accountNumber: params[:account_number],
           fromDate: (params[:from_date] || date).iso8601,
           toDate: (params[:to_date] || date).iso8601
@@ -125,7 +125,7 @@ module Lipwa
           source: source_payload(params[:source_account]),
           destination: {
             type: "bank",
-            countryCode: self.class.config.country_code,
+            countryCode: config.country_code,
             name: params[:destination_name],
             accountNumber: params[:destination_account],
             bankCode: params[:destination_bank_code]
@@ -138,7 +138,7 @@ module Lipwa
         {
           biller: {
             billerCode: params[:biller_code],
-            countryCode: self.class.config.country_code
+            countryCode: config.country_code
           },
           bill: {
             reference: params[:destination_account],
@@ -146,11 +146,11 @@ module Lipwa
             currency: params[:amount].currency
           },
           payer: {
-            name: self.class.config.source_name,
+            name: config.source_name,
             accountNumber: params[:source_account],
             reference: params[:reference]
           },
-          partnerId: self.class.config.partner_id || self.class.config.merchant_code
+          partnerId: config.partner_id || config.merchant_code
         }
       end
 
@@ -175,16 +175,16 @@ module Lipwa
       end
 
       def ensure_disbursement_config_present!
-        ensure_jenga_config_present!(self.class.config)
+        ensure_jenga_config_present!(config)
       end
 
       def mobile_money_body(params)
         reference = params[:account_reference] || params[:occasion] || SecureRandom.uuid
         {
-          source: source_payload(self.class.config.source_account),
+          source: source_payload(config.source_account),
           destination: {
             type: "mobile",
-            countryCode: self.class.config.country_code,
+            countryCode: config.country_code,
             name: params[:party_b],
             mobileNumber: params[:party_b],
             walletName: "Mpesa"
@@ -203,8 +203,8 @@ module Lipwa
 
       def source_payload(account)
         {
-          countryCode: self.class.config.country_code,
-          name: self.class.config.source_name,
+          countryCode: config.country_code,
+          name: config.source_name,
           accountNumber: account
         }
       end
@@ -265,7 +265,7 @@ module Lipwa
       end
 
       def request_date
-        value = self.class.config.clock&.call || Date.today
+        value = config.clock&.call || Date.today
         value.respond_to?(:to_date) ? value.to_date : value
       end
 

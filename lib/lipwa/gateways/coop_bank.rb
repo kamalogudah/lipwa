@@ -26,7 +26,7 @@ module Lipwa
       private
 
       def build_http_adapter
-        config = self.class.config
+        config = self.config
         api_key = config.api_key || config.client_id
         api_secret = config.api_secret || config.client_secret
         unless api_key && api_secret
@@ -38,9 +38,9 @@ module Lipwa
                         token_url: config.token_url || TOKEN_URLS.fetch(config.env))
         HttpAdapter.new(base_url: config.base_url || BASE_URLS.fetch(config.env),
                         auth_strategy: AuthStrategies::BearerToken.new(auth),
-                        timeout: config.timeout || Lipwa.config.default_timeout,
-                        open_timeout: config.open_timeout, logger: config.logger || Lipwa.config.logger,
-                        adapter: Lipwa.config.adapter)
+                        timeout: config.timeout || global_config.default_timeout,
+                        open_timeout: config.open_timeout, logger: config.logger || global_config.logger,
+                        adapter: global_config.adapter)
       end
 
       def bank_transfer_request(params, idempotency_key)

@@ -48,7 +48,7 @@ module Lipwa
       end
 
       def stk_push_body(params)
-        config = self.class.config
+        config = self.config
         timestamp = Time.now.strftime("%Y%m%d%H%M%S")
 
         {

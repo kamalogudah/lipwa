@@ -66,10 +66,10 @@ module Lipwa
 
       def b2c_body(params)
         {
-          InitiatorName: self.class.config.initiator_name,
+          InitiatorName: config.initiator_name,
           SecurityCredential: security_credential,
           CommandID: params[:command_id],
-          PartyA: self.class.config.shortcode,
+          PartyA: config.shortcode,
           PartyB: params[:party_b],
           Occasion: params[:occasion]
         }.merge(shared_disbursement_fields(params))
@@ -77,12 +77,12 @@ module Lipwa
 
       def b2b_body(params)
         {
-          Initiator: self.class.config.initiator_name,
+          Initiator: config.initiator_name,
           SecurityCredential: security_credential,
           CommandID: params[:command_id],
           SenderIdentifierType: "4",
           RecieverIdentifierType: "4",
-          PartyA: self.class.config.shortcode,
+          PartyA: config.shortcode,
           PartyB: params[:party_b],
           AccountReference: params[:account_reference]
         }.merge(shared_disbursement_fields(params))
@@ -99,8 +99,8 @@ module Lipwa
 
       def security_credential
         Lipwa::Gateways::Mpesa::SecurityCredential.encrypt(
-          self.class.config.initiator_password,
-          cert: self.class.config.security_credential_cert
+          config.initiator_password,
+          cert: config.security_credential_cert
         )
       end
 
@@ -116,7 +116,7 @@ module Lipwa
       end
 
       def ensure_disbursement_config_present!
-        config = self.class.config
+        config = self.config
         return if config.initiator_name && config.initiator_password && config.security_credential_cert
 
         raise Lipwa::ConfigurationError,

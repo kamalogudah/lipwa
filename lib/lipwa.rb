@@ -12,6 +12,7 @@ require_relative "lipwa/configuration"
 require_relative "lipwa/capability"
 require_relative "lipwa/gateway"
 require_relative "lipwa/gateways"
+require_relative "lipwa/context"
 require_relative "lipwa/webhook"
 require_relative "lipwa/webhooks/mpesa"
 require_relative "lipwa/webhooks/jenga"
@@ -50,6 +51,10 @@ require_relative "lipwa/gateways/flutterwave"
 require_relative "lipwa/gateways/paystack"
 # Unified payment gateway abstraction for African payment providers.
 module Lipwa
+  def self.context(&block)
+    Context.new(&block)
+  end
+
   def self.gateway(name)
     Gateways[name]
   end
