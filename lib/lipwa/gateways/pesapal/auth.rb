@@ -18,6 +18,12 @@ module Lipwa
           @clock = clock
         end
 
+        def initialize_copy(source)
+          super
+          @token = nil
+          @expires_at = nil
+        end
+
         def call
           return @token if @token && @expires_at && @clock.call < @expires_at
 

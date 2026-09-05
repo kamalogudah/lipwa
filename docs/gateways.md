@@ -57,3 +57,21 @@ Logs recursively redact authorization, credentials, cookies, passwords,
 tokens, and secret-like fields.
 
 <nav class="doc-nav"><a href="{{ '/capabilities/' | relative_url }}">← Capabilities</a><a href="{{ '/webhooks/' | relative_url }}">Webhooks →</a></nav>
+
+
+Gateway configuration is captured when the instance is constructed. Direct
+construction and the memoized `Lipwa.gateway(:provider)` use provider settings
+from `Lipwa::Gateways::<Provider>.configure` and shared settings from
+`Lipwa.configure`. Later changes apply to new instances.
+
+A context captures these defaults when it is created, then applies its builder
+overrides. Each context memoizes its own instances of the registered gateway
+classes. Explicit `config:` and `global_config:` constructor snapshots replace
+their respective defaults. Provider timeout and logger settings take precedence
+over shared settings; otherwise shared defaults apply.
+
+Custom `auth_strategy` objects are duplicated for each gateway. Stateful custom
+strategies should implement `initialize_copy` to isolate nested mutable state,
+or supply a zero-argument factory that creates a fresh strategy and token source.
+Callable token providers and clocks must not close over shared mutable token
+caches. Built-in OAuth clients reset their caches when copied.

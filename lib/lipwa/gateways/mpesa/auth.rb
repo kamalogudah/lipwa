@@ -47,6 +47,16 @@ module Lipwa
         # one if there's none yet or the cached one is about to expire.
         # Safe to call concurrently: only one refresh happens in flight,
         # other callers block on it and reuse its result.
+        def initialize_copy(source)
+          super
+          @token = nil
+          @expires_at = nil
+          @mutex = Mutex.new
+          @http = Lipwa::HttpAdapter.new(base_url: @http.base_url, timeout: @http.timeout,
+                                         open_timeout: @http.open_timeout, logger: @http.logger,
+                                         adapter: @http.adapter)
+        end
+
         def call
           return @token if fresh?
 

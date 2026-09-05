@@ -6,7 +6,7 @@ require_relative "types"
 require_relative "capability"
 require_relative "auth_strategies"
 require_relative "http_adapter"
-require_relative "configuration"
+require_relative "configuration_snapshot"
 
 module Lipwa
   # Abstract base every provider gateway (Mpesa, CoopBank, Jenga, ...)
@@ -41,17 +41,17 @@ module Lipwa
       end
     end
 
+    attr_reader :config, :global_config
+
+    # Explicit snapshots win over defaults captured at construction time.
     def initialize(config: nil, global_config: nil)
-      @config = config
-      @global_config = global_config
-    end
-
-    def config
-      @config || self.class.config
-    end
-
-    def global_config
-      @global_config || Lipwa.config
+      @config = ConfigurationSnapshot.snapshot(config || self.class.config)
+      strategy = @config.auth_strategy
+      @config.auth_strategy = strategy.respond_to?(:apply) ? strategy.dup : strategy&.call
+      ConfigurationSnapshot.finalize(@config)
+      @global_config = ConfigurationSnapshot.finalize(
+        ConfigurationSnapshot.snapshot(global_config || Lipwa.config)
+      )
     end
 
     def capability?(name)
