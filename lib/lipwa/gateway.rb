@@ -6,7 +6,7 @@ require_relative "types"
 require_relative "capability"
 require_relative "auth_strategies"
 require_relative "http_adapter"
-require_relative "configuration"
+require_relative "configuration_snapshot"
 
 module Lipwa
   # Abstract base every provider gateway (Mpesa, CoopBank, Jenga, ...)
@@ -41,6 +41,19 @@ module Lipwa
       end
     end
 
+    attr_reader :config, :global_config
+
+    # Explicit snapshots win over defaults captured at construction time.
+    def initialize(config: nil, global_config: nil)
+      @config = ConfigurationSnapshot.snapshot(config || self.class.config)
+      strategy = @config.auth_strategy
+      @config.auth_strategy = strategy.respond_to?(:apply) ? strategy.dup : strategy&.call
+      ConfigurationSnapshot.finalize(@config)
+      @global_config = ConfigurationSnapshot.finalize(
+        ConfigurationSnapshot.snapshot(global_config || Lipwa.config)
+      )
+    end
+
     def capability?(name)
       self.class.capabilities.include?(name.to_sym)
     end
@@ -49,19 +62,25 @@ module Lipwa
       @http ||= build_http_adapter
     end
 
+    # Configuration contains credentials, so the default object inspection is
+    # deliberately replaced with a diagnostic that cannot serialize them.
+    def inspect
+      "#<#{self.class}:0x#{object_id.to_s(16)}>"
+    end
+
     private
 
     def build_http_adapter
-      config = self.class.config
+      config = self.config
       ensure_base_url_configured!(config)
 
       HttpAdapter.new(
         base_url: config.base_url,
         auth_strategy: config.auth_strategy || AuthStrategies::None.new,
-        timeout: config.timeout || Lipwa.config.default_timeout,
+        timeout: config.timeout || global_config.default_timeout,
         open_timeout: config.open_timeout,
-        logger: config.logger || Lipwa.config.logger,
-        adapter: Lipwa.config.adapter
+        logger: config.logger || global_config.logger,
+        adapter: global_config.adapter
       )
     end
 

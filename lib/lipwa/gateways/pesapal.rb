@@ -94,7 +94,7 @@ module Lipwa
 
       # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
       def build_http_adapter
-        config = self.class.config
+        config = self.config
         ensure_pesapal_config_present!(config)
         base_url = config.base_url || BASE_URLS.fetch(config.env)
         auth = config.auth_strategy || AuthStrategies::BearerToken.new(
@@ -102,9 +102,9 @@ module Lipwa
                    base_url: base_url, clock: config.clock || -> { Time.now })
         )
         HttpAdapter.new(base_url: base_url, auth_strategy: auth,
-                        timeout: config.timeout || Lipwa.config.default_timeout,
-                        open_timeout: config.open_timeout, logger: config.logger || Lipwa.config.logger,
-                        adapter: Lipwa.config.adapter)
+                        timeout: config.timeout || global_config.default_timeout,
+                        open_timeout: config.open_timeout, logger: config.logger || global_config.logger,
+                        adapter: global_config.adapter)
       end
 
       # rubocop:enable Metrics/AbcSize, Metrics/MethodLength

@@ -40,7 +40,7 @@ module Lipwa
         missing = %i[card_number cvv expiry_month expiry_year].reject { |key| params[key] }
         return missing_card_failure(missing) unless missing.empty?
 
-        return missing_encryption_key_failure unless self.class.config.encryption_key
+        return missing_encryption_key_failure unless config.encryption_key
 
         response = http.post(CHARGES_PATH, params: { type: "card" },
                                            body: encrypted_card_body(params), idempotency_key: idempotency_key)
@@ -102,7 +102,7 @@ module Lipwa
       def encrypted_card_body(params)
         cipher = OpenSSL::Cipher.new("des-ede3")
         cipher.encrypt
-        cipher.key = self.class.config.encryption_key
+        cipher.key = config.encryption_key
         encrypted = cipher.update(JSON.generate(card_charge_body(params))) + cipher.final
         { client: Base64.strict_encode64(encrypted) }
       end
@@ -137,13 +137,13 @@ module Lipwa
 
       # rubocop:disable Metrics/AbcSize
       def build_http_adapter
-        config = self.class.config
+        config = self.config
         ensure_flutterwave_config_present!(config)
         auth = config.auth_strategy || AuthStrategies::BearerToken.new(-> { config.secret_key })
         HttpAdapter.new(base_url: config.base_url || BASE_URL, auth_strategy: auth,
-                        timeout: config.timeout || Lipwa.config.default_timeout,
-                        open_timeout: config.open_timeout, logger: config.logger || Lipwa.config.logger,
-                        adapter: Lipwa.config.adapter)
+                        timeout: config.timeout || global_config.default_timeout,
+                        open_timeout: config.open_timeout, logger: config.logger || global_config.logger,
+                        adapter: global_config.adapter)
       end
       # rubocop:enable Metrics/AbcSize
 

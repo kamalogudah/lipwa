@@ -63,7 +63,7 @@ module Lipwa
 
       def register_urls_body(params)
         {
-          ShortCode: self.class.config.shortcode,
+          ShortCode: config.shortcode,
           ResponseType: params[:response_type],
           ConfirmationURL: params[:confirmation_url],
           ValidationURL: params[:validation_url]
@@ -80,7 +80,7 @@ module Lipwa
 
       def simulate_body(params)
         {
-          ShortCode: self.class.config.shortcode,
+          ShortCode: config.shortcode,
           CommandID: params[:command_id],
           Amount: params[:amount].amount,
           Msisdn: params[:phone_number],

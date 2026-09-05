@@ -97,13 +97,13 @@ module Lipwa
 
       # rubocop:disable Metrics/AbcSize
       def build_http_adapter
-        config = self.class.config
+        config = self.config
         ensure_paystack_config_present!(config)
         auth = config.auth_strategy || AuthStrategies::BearerToken.new(-> { config.secret_key })
         HttpAdapter.new(base_url: config.base_url || BASE_URL, auth_strategy: auth,
-                        timeout: config.timeout || Lipwa.config.default_timeout,
-                        open_timeout: config.open_timeout, logger: config.logger || Lipwa.config.logger,
-                        adapter: Lipwa.config.adapter)
+                        timeout: config.timeout || global_config.default_timeout,
+                        open_timeout: config.open_timeout, logger: config.logger || global_config.logger,
+                        adapter: global_config.adapter)
       end
       # rubocop:enable Metrics/AbcSize
 

@@ -27,6 +27,38 @@ class CapableGateway < Lipwa::Gateway
 end
 
 class GatewayTest < Minitest::Test
+  def test_explicit_snapshots_override_defaults_and_survive_later_changes
+    provider = PlainGateway.config.dup
+    provider.base_url = +"https://snapshot.example.com"
+    provider.timeout = 7
+    shared = Lipwa.config.dup
+    shared.default_timeout = 19
+    gateway = PlainGateway.new(config: provider, global_config: shared)
+    provider.base_url.replace("https://changed.example.com")
+    provider.timeout = 99
+    shared.default_timeout = 99
+
+    assert_equal "https://snapshot.example.com", gateway.http.base_url
+    assert_equal 7, gateway.http.timeout
+    assert_equal 19, gateway.global_config.default_timeout
+  end
+
+  def test_direct_construction_captures_defaults_before_http_is_built
+    previous = PlainGateway.config.to_h
+    timeout = Lipwa.config.default_timeout
+    Lipwa.configure { |config| config.default_timeout = 23 }
+    gateway = PlainGateway.new
+    PlainGateway.configure { |config| config.base_url = "https://later.example.com" }
+    Lipwa.configure { |config| config.default_timeout = 99 }
+
+    assert_equal "https://plain.example.com", gateway.http.base_url
+    assert_equal 23, gateway.http.timeout
+    assert_equal "https://later.example.com", PlainGateway.new.http.base_url
+  ensure
+    PlainGateway.config.update(previous)
+    Lipwa.config.default_timeout = timeout
+  end
+
   def test_capability_is_false_when_module_not_included
     refute PlainGateway.new.capability?(:ping)
   end

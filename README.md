@@ -61,6 +61,44 @@ result.either(
 A successful STK response means M-Pesa accepted the request. The final payment
 outcome arrives asynchronously at `callback_url`.
 
+## Isolated configuration contexts
+
+Use an explicit context for each merchant or tenant. It snapshots the current
+`Lipwa.config` and all registered gateway configurations before applying overrides.
+
+```ruby
+tenant_context = Lipwa.context do |config|
+  config.default_timeout = 20
+
+  config.gateway(:mpesa) do |mpesa|
+    mpesa.consumer_key = tenant.mpesa_consumer_key
+    mpesa.consumer_secret = tenant.mpesa_consumer_secret
+    mpesa.shortcode = tenant.mpesa_shortcode
+    mpesa.passkey = tenant.mpesa_passkey
+  end
+end
+
+gateway = tenant_context.gateway(:mpesa)
+gateway.equal?(tenant_context.gateway(:mpesa)) # => true (memoized per context)
+gateway.equal?(Lipwa.gateway(:mpesa))          # => false (process-wide gateway)
+```
+
+`Lipwa::Context.new` accepts the same block. Settings are frozen when the block
+finishes, and typed overrides are validated during construction. Later global
+reconfiguration does not affect an existing context. Each context owns its gateway
+instances; pass the context explicitly to your application code. There is no
+thread-local tenant state. Logger and other service objects retain their identity;
+configuration strings, arrays, and hashes are copied and frozen.
+
+`Lipwa.configure`, gateway-class `.configure`, and `Lipwa.gateway(:mpesa)`
+remain supported and backward compatible for process-wide configuration.
+Configure defaults at boot; do not repeatedly mutate gateway-class configuration
+per request to switch tenants. Load tenant secrets when constructing the context,
+then retain one context per tenant. Lipwa's HTTP log redaction also applies to
+context gateways; avoid logging raw credentials or configuration.
+See [contexts and the tenant service example](docs/gateways.md#contexts) for
+inheritance, snapshot timing, and credential rotation.
+
 ## Lightning Network (LNbits)
 
 LNbits is the only Lightning backend supported today. The authentication

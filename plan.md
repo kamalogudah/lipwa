@@ -254,6 +254,10 @@ event = Lipwa::Gateways::Mpesa.parse_webhook(request.body.read, headers: request
    gateway memoization, and concurrency/isolation coverage. Preserve
    `Lipwa.configure`, gateway-class `.configure`, and `Lipwa.gateway` as the
    backward-compatible process-wide API.
+   Documentation milestone: README multi-tenant example and gateway context
+   guide covering inheritance, snapshot timing, immutability, isolation,
+   context-local memoization, retained tenant services, and secret redaction.
+   Depends on #58, #57, and the provider migration issue; parent decision #33.
 9. **Lightning Network (LNbits), receive-only** — new `AuthStrategies::ApiKey`,
    `LightningInvoice` capability (`#create_invoice`, `#check_invoice`),
    `Lipwa::Gateways::Lnbits`, `Lipwa::Webhooks::Lnbits` (shared-secret-token
@@ -276,6 +280,13 @@ event = Lipwa::Gateways::Mpesa.parse_webhook(request.body.read, headers: request
   gateway instances, and does not observe later global reconfiguration.
   Context configuration is mutable only during construction and frozen before
   use. No ambient thread-local current-tenant state is introduced.
+  `Lipwa.gateway(:mpesa)` remains the backward-compatible process-wide lookup;
+  `tenant_context.gateway(:mpesa)` resolves a separate context-owned instance.
+  Retain one context per tenant, load secrets during construction, and replace
+  the context to rotate credentials. Do not mutate gateway-class configuration
+  per request. Context gateways retain HTTP log redaction for tenant secrets.
+  This records parent decision #33; the README and gateway guide document the
+  API after #58, #57, and provider migration.
 
 ## 12. Open questions to confirm before/while building
 
