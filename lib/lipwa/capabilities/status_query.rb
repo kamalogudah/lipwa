@@ -26,14 +26,16 @@ module Lipwa
       CONTRACT = Lipwa::Contracts::StatusQueryContract.new
 
       def status(transaction_id: nil, message_reference: nil, remarks: nil, result_url: nil, # rubocop:disable Metrics/ParameterLists
-                 queue_timeout_url: nil, occasion: nil)
+                 queue_timeout_url: nil, occasion: nil, idempotency_key: nil)
         validate_and_query(
-          transaction_id: transaction_id, message_reference: message_reference,
-          remarks: remarks, result_url: result_url,
-          queue_timeout_url: queue_timeout_url, occasion: occasion
+          {
+            transaction_id: transaction_id, message_reference: message_reference,
+            remarks: remarks, result_url: result_url,
+            queue_timeout_url: queue_timeout_url, occasion: occasion
+          },
+          idempotency_key
         )
       end
-      # rubocop:enable Metrics/ParameterLists
 
       private
 
@@ -47,15 +49,15 @@ module Lipwa
       def perform_status_query(params, idempotency_key)
         ensure_status_query_config_present!
 
-        response = status_query_request(params)
+        response = status_query_request(params, idempotency_key)
 
         build_status_query_response(response.body)
       rescue Lipwa::GatewayError => e
         Failure(e)
       end
 
-      def status_query_request(params)
-        http.post(PATH, body: status_query_body(params))
+      def status_query_request(params, idempotency_key)
+        http.post(PATH, body: status_query_body(params), idempotency_key: idempotency_key)
       end
 
       def status_query_body(params)
