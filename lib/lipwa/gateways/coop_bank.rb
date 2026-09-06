@@ -70,8 +70,9 @@ module Lipwa
         http.post(PATHS[:statement], body: body, idempotency_key: idempotency_key)
       end
 
-      def status_query_request(params)
-        http.post(STATUS_PATH, body: { MessageReference: params[:message_reference] })
+      def status_query_request(params, idempotency_key)
+        http.post(STATUS_PATH, body: { MessageReference: params[:message_reference] },
+                               idempotency_key: idempotency_key)
       end
 
       def build_status_query_response(body)
