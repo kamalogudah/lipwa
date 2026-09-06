@@ -8,16 +8,20 @@ Gem::Specification.new do |spec|
   spec.authors = ["Paul Oguda"]
   spec.email = ["mcpaul2058@gmail.com"]
 
-  spec.summary = "TODO: Write a short summary, because RubyGems requires one."
-  spec.description = "TODO: Write a longer description or delete this line."
-  spec.homepage = "TODO: Put your gem's website or public repo URL here."
+  spec.summary = "Unified Ruby gem for African payment providers, starting with M-Pesa Daraja."
+  spec.description = "Lipwa is a unified Ruby gem for accepting and disbursing payments across " \
+                      "African payment providers -- mobile money, bank APIs, and (eventually) " \
+                      "card rails -- behind one consistent, capability-based interface. It " \
+                      "currently ships a full integration with Safaricom's M-Pesa Daraja API: " \
+                      "STK Push, C2B, B2C/B2B disbursements, and inbound webhook handling."
+  spec.homepage = "https://github.com/kamalogudah/lipwa"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.2.0"
 
-  spec.metadata["allowed_push_host"] = "TODO: Set to your gem server 'https://example.com'"
+  spec.metadata["allowed_push_host"] = "https://rubygems.org"
   spec.metadata["homepage_uri"] = spec.homepage
-  spec.metadata["source_code_uri"] = "TODO: Put your gem's public repo URL here."
-  spec.metadata["changelog_uri"] = "TODO: Put your gem's CHANGELOG.md URL here."
+  spec.metadata["source_code_uri"] = "https://github.com/kamalogudah/lipwa"
+  spec.metadata["changelog_uri"] = "https://github.com/kamalogudah/lipwa/blob/main/CHANGELOG.md"
 
   # Specify which files should be added to the gem when it is released.
   # The `git ls-files -z` loads the files in the RubyGem that have been added into git.
