@@ -284,7 +284,21 @@ bin/console
 Tests use WebMock and sanitized VCR fixtures; they do not contact live provider
 sandboxes.
 
+<<<<<<< HEAD
 ## Contributing and license
+=======
+`examples/rails_api` is a small Rails API app that exercises every
+capability against a real (sandbox) Daraja account — STK Push, C2B,
+disbursement, refund, and inbound webhooks — useful both for evaluating
+the gem and for manually smoke-testing changes. It's excluded from the
+released gem package. See its own README for setup.
+
+To install this gem onto your local machine, run `bundle exec rake
+install`. To release a new version, update the version number in
+`version.rb`, and then run `bundle exec rake release`, which will create a
+git tag for the version, push git commits and the created tag, and push
+the `.gem` file to [rubygems.org](https://rubygems.org).
+>>>>>>> 3eb4b65 (Add example application)
 
 Bug reports and pull requests are welcome on
 [GitHub](https://github.com/kamalogudah/lipwa). Please follow the
