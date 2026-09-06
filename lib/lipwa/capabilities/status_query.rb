@@ -25,12 +25,13 @@ module Lipwa
 
       CONTRACT = Lipwa::Contracts::StatusQueryContract.new
 
-      # rubocop:disable Metrics/ParameterLists
-      def status(transaction_id:, remarks:, result_url:, queue_timeout_url:, occasion: nil,
-                 idempotency_key: nil)
-        args = { transaction_id: transaction_id, remarks: remarks, result_url: result_url,
-                 queue_timeout_url: queue_timeout_url, occasion: occasion }
-        validate_and_query(args, idempotency_key)
+      def status(transaction_id: nil, message_reference: nil, remarks: nil, result_url: nil, # rubocop:disable Metrics/ParameterLists
+                 queue_timeout_url: nil, occasion: nil)
+        validate_and_query(
+          transaction_id: transaction_id, message_reference: message_reference,
+          remarks: remarks, result_url: result_url,
+          queue_timeout_url: queue_timeout_url, occasion: occasion
+        )
       end
       # rubocop:enable Metrics/ParameterLists
 
@@ -46,7 +47,7 @@ module Lipwa
       def perform_status_query(params, idempotency_key)
         ensure_status_query_config_present!
 
-        response = http.post(PATH, body: status_query_body(params), idempotency_key: idempotency_key)
+        response = status_query_request(params)
 
         build_status_query_response(response.body)
       rescue Lipwa::GatewayError => e
