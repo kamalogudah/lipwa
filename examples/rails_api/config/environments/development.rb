@@ -44,8 +44,7 @@ Rails.application.configure do
   # sandbox can actually reach this app.
   config.action_controller.default_url_options = {
     host: ENV.fetch("APP_HOST", "localhost:3000"),
-    protocol: "https",
-    port: nil
+    protocol: "https"
   }
 
   # Print deprecation notices to the Rails logger.
