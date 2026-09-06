@@ -10,18 +10,21 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_29_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_05_000001) do
   create_table "transactions", force: :cascade do |t|
     t.string "account_reference"
     t.integer "amount_cents"
     t.datetime "created_at", null: false
     t.string "currency"
+    t.string "destination_account"
     t.text "error_message"
     t.string "kind", null: false
     t.string "party_b"
     t.string "phone_number"
     t.string "provider_reference"
+    t.string "rail"
     t.text "raw_response"
+    t.string "source_account"
     t.string "status", default: "pending", null: false
     t.datetime "updated_at", null: false
     t.index ["provider_reference"], name: "index_transactions_on_provider_reference"

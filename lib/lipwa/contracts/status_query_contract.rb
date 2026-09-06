@@ -11,19 +11,42 @@ module Lipwa
     # per-call param.
     class StatusQueryContract < Dry::Validation::Contract
       schema do
-        required(:transaction_id).filled(:string)
-        required(:remarks).filled(:string)
-        required(:result_url).filled(:string)
-        required(:queue_timeout_url).filled(:string)
+        optional(:transaction_id).maybe(:string)
+        optional(:message_reference).maybe(:string)
+        optional(:remarks).maybe(:string)
+        optional(:result_url).maybe(:string)
+        optional(:queue_timeout_url).maybe(:string)
         optional(:occasion).maybe(:string)
       end
 
+      rule(:transaction_id, :message_reference) do
+        if values[:transaction_id].to_s.empty? && values[:message_reference].to_s.empty?
+          key(:transaction_id).failure("or message_reference must be filled")
+        elsif values[:transaction_id] && values[:message_reference]
+          key(:message_reference).failure("cannot be used with transaction_id")
+        end
+      end
+
+      rule(:remarks, :transaction_id) do
+        key(:remarks).failure("must be filled") if values[:transaction_id] && values[:remarks].to_s.empty?
+      end
+
+      rule(:result_url, :transaction_id) do
+        key(:result_url).failure("must be filled") if values[:transaction_id] && values[:result_url].to_s.empty?
+      end
+
+      rule(:queue_timeout_url, :transaction_id) do
+        if values[:transaction_id] && values[:queue_timeout_url].to_s.empty?
+          key(:queue_timeout_url).failure("must be filled")
+        end
+      end
+
       rule(:result_url) do
-        key.failure("must be an https:// URL") unless value.start_with?("https://")
+        key.failure("must be an https:// URL") if value && !value.start_with?("https://")
       end
 
       rule(:queue_timeout_url) do
-        key.failure("must be an https:// URL") unless value.start_with?("https://")
+        key.failure("must be an https:// URL") if value && !value.start_with?("https://")
       end
     end
   end

@@ -25,39 +25,48 @@ module Lipwa
 
       CONTRACT = Lipwa::Contracts::StatusQueryContract.new
 
-      def status(transaction_id:, remarks:, result_url:, queue_timeout_url:, occasion: nil)
+      def status(transaction_id: nil, message_reference: nil, remarks: nil, result_url: nil, # rubocop:disable Metrics/ParameterLists
+                 queue_timeout_url: nil, occasion: nil, idempotency_key: nil)
         validate_and_query(
-          transaction_id: transaction_id, remarks: remarks, result_url: result_url,
-          queue_timeout_url: queue_timeout_url, occasion: occasion
+          {
+            transaction_id: transaction_id, message_reference: message_reference,
+            remarks: remarks, result_url: result_url,
+            queue_timeout_url: queue_timeout_url, occasion: occasion
+          },
+          idempotency_key
         )
       end
 
       private
 
-      def validate_and_query(args)
+      def validate_and_query(args, idempotency_key)
         validation = CONTRACT.call(args)
         return Failure(Lipwa::ValidationError.new(validation)) if validation.failure?
 
-        perform_status_query(validation.to_h)
+        perform_status_query(validation.to_h, idempotency_key)
       end
 
-      def perform_status_query(params)
+      def perform_status_query(params, idempotency_key)
         ensure_status_query_config_present!
 
-        response = http.post(PATH, body: status_query_body(params))
+        response = status_query_request(params, idempotency_key)
 
         build_status_query_response(response.body)
       rescue Lipwa::GatewayError => e
         Failure(e)
       end
 
+      def status_query_request(params, idempotency_key)
+        http.post(PATH, body: status_query_body(params), idempotency_key: idempotency_key)
+      end
+
       def status_query_body(params)
         {
-          Initiator: self.class.config.initiator_name,
+          Initiator: config.initiator_name,
           SecurityCredential: security_credential,
           CommandID: "TransactionStatusQuery",
           TransactionID: params[:transaction_id],
-          PartyA: self.class.config.shortcode,
+          PartyA: config.shortcode,
           IdentifierType: IDENTIFIER_TYPE
         }.merge(shared_status_query_fields(params))
       end
@@ -73,8 +82,8 @@ module Lipwa
 
       def security_credential
         Lipwa::Gateways::Mpesa::SecurityCredential.encrypt(
-          self.class.config.initiator_password,
-          cert: self.class.config.security_credential_cert
+          config.initiator_password,
+          cert: config.security_credential_cert
         )
       end
 
@@ -89,7 +98,7 @@ module Lipwa
       end
 
       def ensure_status_query_config_present!
-        config = self.class.config
+        config = self.config
         return if config.initiator_name && config.initiator_password && config.security_credential_cert
 
         raise Lipwa::ConfigurationError,

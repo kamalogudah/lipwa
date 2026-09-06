@@ -9,6 +9,11 @@ Rails.application.routes.draw do
 
       post "c2b/register_urls", to: "c2b#register_urls"
       post "c2b/simulate", to: "c2b#simulate"
+      post "jenga/transfers", to: "jenga#transfer"
+      get "jenga/balance", to: "jenga#balance"
+      get "jenga/statement", to: "jenga#statement"
+      post "jenga/forex", to: "jenga#forex"
+      post "jenga/disbursements", to: "jenga#disburse"
     end
   end
 
@@ -17,5 +22,6 @@ Rails.application.routes.draw do
     post "mpesa/c2b", to: "mpesa#receive", as: :mpesa_c2b
     post "mpesa/result", to: "mpesa#receive", as: :mpesa_result
     post "mpesa/timeout", to: "mpesa#receive", as: :mpesa_timeout
+    post "jenga", to: "jenga#receive", as: :jenga
   end
 end

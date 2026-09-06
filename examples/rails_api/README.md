@@ -35,6 +35,11 @@ be able to reach them over the public internet — running this app locally,
 that means tunneling it (e.g. `ngrok http 3000`) and setting `APP_HOST` in
 `.env` to the tunnel's host (e.g. `abc123.ngrok-free.app`).
 
+Jenga HQ sandbox calls are also available. Add the `JENGA_*` values from
+`.env.example`, including a PEM RSA private key whose public key has been
+registered with Jenga, then use the endpoints below. Jenga UAT URLs are
+selected by `JENGA_ENV=sandbox`.
+
 ## Endpoints
 
 | Method | Path | Capability |
@@ -42,9 +47,15 @@ that means tunneling it (e.g. `ngrok http 3000`) and setting `APP_HOST` in
 | POST | `/api/v1/stk_pushes` | `#stk_push` |
 | POST | `/api/v1/c2b/register_urls` | `#register_urls` |
 | POST | `/api/v1/c2b/simulate` | `#simulate` (sandbox only) |
+| POST | `/api/v1/jenga/transfers` | Jenga bank/PesaLink/RTGS/SWIFT/bill transfers |
+| GET | `/api/v1/jenga/balance` | Jenga account balance |
+| GET | `/api/v1/jenga/statement` | Jenga full statement |
+| POST | `/api/v1/jenga/forex` | Jenga foreign-exchange rate |
+| POST | `/api/v1/jenga/disbursements` | Jenga mobile-wallet payout |
 | POST | `/api/v1/disbursements` | `#disburse` (B2C/B2B) |
 | POST | `/api/v1/refunds` | `#refund` |
 | POST | `/webhooks/mpesa/{stk,c2b,result,timeout}` | inbound callbacks |
+| POST | `/webhooks/jenga` | Jenga receive-payment callback |
 
 ### STK Push
 

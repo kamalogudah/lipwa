@@ -24,7 +24,7 @@ module Lipwa
       REGISTER_URLS_CONTRACT = Lipwa::Contracts::C2bRegisterUrlsContract.new
       SIMULATE_CONTRACT = Lipwa::Contracts::C2bSimulateContract.new
 
-      def register_urls(validation_url:, confirmation_url:, response_type: "Completed")
+      def register_urls(validation_url:, confirmation_url:, response_type: "Completed", idempotency_key: nil)
         validation = REGISTER_URLS_CONTRACT.call(
           validation_url: validation_url,
           confirmation_url: confirmation_url,
@@ -32,13 +32,14 @@ module Lipwa
         )
         return Failure(Lipwa::ValidationError.new(validation)) if validation.failure?
 
-        perform_register_urls(validation.to_h)
+        perform_register_urls(validation.to_h, idempotency_key)
       end
 
       # Sandbox-only: triggers a simulated C2B payment so the
       # registered validation/confirmation URLs can be exercised
       # without a real customer transaction.
-      def simulate(amount:, phone_number:, bill_ref_number:, command_id: "CustomerPayBillOnline")
+      def simulate(amount:, phone_number:, bill_ref_number:, command_id: "CustomerPayBillOnline",
+                   idempotency_key: nil)
         validation = SIMULATE_CONTRACT.call(
           amount: amount,
           phone_number: phone_number,
@@ -47,13 +48,13 @@ module Lipwa
         )
         return Failure(Lipwa::ValidationError.new(validation)) if validation.failure?
 
-        perform_simulate(validation.to_h)
+        perform_simulate(validation.to_h, idempotency_key)
       end
 
       private
 
-      def perform_register_urls(params)
-        response = http.post(REGISTER_URLS_PATH, body: register_urls_body(params))
+      def perform_register_urls(params, idempotency_key)
+        response = http.post(REGISTER_URLS_PATH, body: register_urls_body(params), idempotency_key: idempotency_key)
 
         build_c2b_response(response.body)
       rescue Lipwa::GatewayError => e
@@ -62,15 +63,15 @@ module Lipwa
 
       def register_urls_body(params)
         {
-          ShortCode: self.class.config.shortcode,
+          ShortCode: config.shortcode,
           ResponseType: params[:response_type],
           ConfirmationURL: params[:confirmation_url],
           ValidationURL: params[:validation_url]
         }
       end
 
-      def perform_simulate(params)
-        response = http.post(SIMULATE_PATH, body: simulate_body(params))
+      def perform_simulate(params, idempotency_key)
+        response = http.post(SIMULATE_PATH, body: simulate_body(params), idempotency_key: idempotency_key)
 
         build_c2b_response(response.body)
       rescue Lipwa::GatewayError => e
@@ -79,7 +80,7 @@ module Lipwa
 
       def simulate_body(params)
         {
-          ShortCode: self.class.config.shortcode,
+          ShortCode: config.shortcode,
           CommandID: params[:command_id],
           Amount: params[:amount].amount,
           Msisdn: params[:phone_number],

@@ -21,7 +21,9 @@ module Lipwa
 
       CONTRACT = Lipwa::Contracts::StkPushContract.new
 
-      def stk_push(amount:, phone_number:, account_reference:, callback_url:, transaction_desc: nil)
+      # rubocop:disable Metrics/ParameterLists
+      def stk_push(amount:, phone_number:, account_reference:, callback_url:, transaction_desc: nil,
+                   idempotency_key: nil)
         validation = CONTRACT.call(
           amount: amount,
           phone_number: phone_number,
@@ -31,13 +33,14 @@ module Lipwa
         )
         return Failure(Lipwa::ValidationError.new(validation)) if validation.failure?
 
-        perform_stk_push(validation.to_h)
+        perform_stk_push(validation.to_h, idempotency_key)
       end
+      # rubocop:enable Metrics/ParameterLists
 
       private
 
-      def perform_stk_push(params)
-        response = http.post(PATH, body: stk_push_body(params))
+      def perform_stk_push(params, idempotency_key)
+        response = http.post(PATH, body: stk_push_body(params), idempotency_key: idempotency_key)
 
         build_stk_push_response(response.body)
       rescue Lipwa::GatewayError => e
@@ -45,7 +48,7 @@ module Lipwa
       end
 
       def stk_push_body(params)
-        config = self.class.config
+        config = self.config
         timestamp = Time.now.strftime("%Y%m%d%H%M%S")
 
         {

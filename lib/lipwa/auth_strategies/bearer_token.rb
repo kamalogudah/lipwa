@@ -19,6 +19,11 @@ module Lipwa
         @token_provider = token_provider
       end
 
+      def initialize_copy(source)
+        super
+        @token_provider = @token_provider.dup
+      end
+
       def apply(env)
         env.request_headers["Authorization"] = "Bearer #{@token_provider.call}"
       end

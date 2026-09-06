@@ -1,0 +1,115 @@
+# frozen_string_literal: true
+
+require "securerandom"
+require_relative "../gateway"
+require_relative "../gateways"
+require_relative "../capabilities/bank_transfer"
+require_relative "../capabilities/status_query"
+module Lipwa
+  module Gateways
+    class CoopBank < Lipwa::Gateway
+      include Lipwa::Capabilities::BankTransfer
+      include Lipwa::Capabilities::StatusQuery
+      BASE_URLS = { sandbox: "https://developer.co-opbank.co.ke:8243",
+                    production: "https://developer.co-opbank.co.ke:8243" }.freeze
+      TOKEN_URLS = BASE_URLS.transform_values { |url| "#{url}/token" }.freeze
+      PATHS = { internal: "/FundsTransfer/Internal/A2A/2.0.0", rtgs: "/FundsTransfer/External/A2A/2.0.0",
+                pesalink: "/FundsTransfer/External/A2M/2.0.0", bill_payment: "/BillPayment/PayBill/1.0.0",
+                balance: "/Enquiry/AccountBalance/1.0.0", statement: "/Enquiry/MiniStatement/1.0.0" }.freeze
+      STATUS_PATH = "/QueryStatus/v1.0.0/query"
+      setting :api_key
+      setting :api_secret
+      setting :client_id
+      setting :client_secret
+      setting :token_url
+      setting :clock
+
+      def status(message_reference:, idempotency_key: nil)
+        response = http.post(STATUS_PATH, body: { MessageReference: message_reference },
+                                          idempotency_key: idempotency_key)
+        build_status_query_response(response.body)
+      rescue Lipwa::GatewayError => e
+        Failure(e)
+      end
+
+      private
+
+      def build_http_adapter
+        config = self.config
+        api_key = config.api_key || config.client_id
+        api_secret = config.api_secret || config.client_secret
+        unless config.auth_strategy || (api_key && api_secret)
+          raise Lipwa::ConfigurationError,
+                "#{self.class} is missing api_key/api_secret — set them via .configure"
+        end
+
+        auth = config.auth_strategy || AuthStrategies::BearerToken.new(
+          Auth.new(client_id: api_key, client_secret: api_secret,
+                   token_url: config.token_url || TOKEN_URLS.fetch(config.env),
+                   clock: config.clock || -> { Time.now })
+        )
+        HttpAdapter.new(base_url: config.base_url || BASE_URLS.fetch(config.env),
+                        auth_strategy: auth,
+                        timeout: config.timeout || global_config.default_timeout,
+                        open_timeout: config.open_timeout, logger: config.logger || global_config.logger,
+                        adapter: global_config.adapter)
+      end
+
+      def bank_transfer_request(params, idempotency_key)
+        http.post(PATHS.fetch(params[:rail]), body: transfer_body(params), idempotency_key: idempotency_key)
+      end
+
+      def bank_balance_request(params, idempotency_key)
+        http.post(PATHS[:balance], body: inquiry_body(params), idempotency_key: idempotency_key)
+      end
+
+      def bank_statement_request(params, idempotency_key)
+        body = inquiry_body(params)
+        body[:StartDate] = params[:from_date].iso8601 if params[:from_date]
+        body[:EndDate] = params[:to_date].iso8601 if params[:to_date]
+        http.post(PATHS[:statement], body: body, idempotency_key: idempotency_key)
+      end
+
+      def status_query_request(params, idempotency_key)
+        http.post(STATUS_PATH, body: { MessageReference: params[:message_reference] },
+                               idempotency_key: idempotency_key)
+      end
+
+      def build_status_query_response(body)
+        code = body["MessageCode"]
+        Success(Lipwa::Response.new(success: code.to_s == "0",
+                                    provider_reference: body["MessageReference"]&.to_s,
+                                    message: body["MessageDescription"]&.to_s,
+                                    code: code&.to_s, raw: body))
+      end
+
+      def ensure_status_query_config_present!
+        # Co-op status queries use the gateway's normal OAuth credentials.
+      end
+
+      def transfer_body(params)
+        common = { MessageReference: params[:reference], CallBackUrl: params[:callback_url] }.compact
+        if params[:rail] == :bill_payment
+          return common.merge(AccountNumber: params[:source_account], BillerCode: params[:biller_code],
+                              BillAccountNumber: params[:destination_account], Amount: params[:amount].amount, Currency: params[:amount].currency, Narration: params[:narration] || params[:reference])
+        end
+
+        common.merge(Source: account_payload(params[:source_account], params),
+                     Destinations: [account_payload(params[:destination_account], params).merge(
+                       ReferenceNumber: params[:reference], BankCode: params[:destination_bank_code], BeneficiaryName: params[:destination_name]
+                     ).compact])
+      end
+
+      def account_payload(account, params)
+        { AccountNumber: account, Amount: params[:amount].amount, TransactionCurrency: params[:amount].currency,
+          Narration: params[:narration] || params[:reference] }
+      end
+
+      def inquiry_body(params)
+        { MessageReference: params[:message_reference] || SecureRandom.uuid, AccountNumber: params[:account_number] }
+      end
+    end
+  end
+end
+require_relative "coop_bank/auth"
+Lipwa::Gateways.register(:coop_bank, Lipwa::Gateways::CoopBank)
