@@ -569,3 +569,9 @@ response: {
 Completed 202 Accepted in 6694ms (Views: 0.9ms | ActiveRecord: 57.3ms (2 queries, 0 cached) | GC: 9.7ms)
 
 
+[dotenv] Set [36mMPESA_ENV[0m, [36mMPESA_CONSUMER_KEY[0m, [36mMPESA_CONSUMER_SECRET[0m, [36mMPESA_SHORTCODE[0m, [36mMPESA_PASSKEY[0m, [36mMPESA_INITIATOR_NAME[0m, [36mMPESA_INITIATOR_PASSWORD[0m, [36mMPESA_CERT_PATH[0m, [36mAPP_HOST[0m
+[dotenv] Loaded [33m.env[0m
+Generating image variants require the image_processing gem. Please add `gem "image_processing", "~> 1.2"` to your Gemfile or set `config.active_storage.variant_processor = :disabled`.
+[dotenv] Set [36mMPESA_ENV[0m, [36mMPESA_CONSUMER_KEY[0m, [36mMPESA_CONSUMER_SECRET[0m, [36mMPESA_SHORTCODE[0m, [36mMPESA_PASSKEY[0m, [36mMPESA_INITIATOR_NAME[0m, [36mMPESA_INITIATOR_PASSWORD[0m, [36mMPESA_CERT_PATH[0m, [36mAPP_HOST[0m
+[dotenv] Loaded [33m.env[0m
+Generating image variants require the image_processing gem. Please add `gem "image_processing", "~> 1.2"` to your Gemfile or set `config.active_storage.variant_processor = :disabled`.
