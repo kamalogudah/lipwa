@@ -1,3 +1,9 @@
+## [0.1.4] - 2026-09-07
+
+- Use an explicit package allowlist to exclude documentation site sources,
+  development tasks, contributor guidance, and placeholder RBS signatures from
+  the installed gem while retaining runtime files, the license, README, and changelog
+
 ## [0.1.3] - 2026-09-06
 
 - Add Co-op Bank support for bank transfers, balance and statement inquiries,

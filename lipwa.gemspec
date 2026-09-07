@@ -23,14 +23,10 @@ Gem::Specification.new do |spec|
   spec.metadata["source_code_uri"] = "https://github.com/kamalogudah/lipwa"
   spec.metadata["changelog_uri"] = "https://github.com/kamalogudah/lipwa/blob/main/CHANGELOG.md"
 
-  # Specify which files should be added to the gem when it is released.
-  # The `git ls-files -z` loads the files in the RubyGem that have been added into git.
-  gemspec = File.basename(__FILE__)
+  # Package only tracked runtime files and release documentation.
   spec.files = IO.popen(%w[git ls-files -z], chdir: __dir__, err: IO::NULL) do |ls|
-    ls.readlines("\x0", chomp: true).reject do |f|
-      (f == gemspec) ||
-        (f == "plan.md") ||
-        f.start_with?(*%w[bin/ Gemfile .gitignore test/ .github/ .rubocop.yml examples/])
+    ls.readlines("\x0", chomp: true).select do |f|
+      f.start_with?("lib/", "exe/") || %w[LICENSE.txt README.md CHANGELOG.md].include?(f)
     end
   end
   spec.bindir = "exe"
