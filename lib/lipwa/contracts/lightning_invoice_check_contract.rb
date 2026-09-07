@@ -9,6 +9,10 @@ module Lipwa
       schema do
         required(:payment_hash).filled(:string)
       end
+
+      rule(:payment_hash) do
+        key.failure("contains unsupported characters") unless value.match?(/\A[A-Za-z0-9_-]+\z/)
+      end
     end
   end
 end

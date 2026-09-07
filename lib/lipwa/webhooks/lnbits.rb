@@ -33,7 +33,8 @@ module Lipwa
       # This verifies knowledge of a shared URL token, not authenticity of the
       # body. The ** passthrough preserves the API for a future HMAC mode.
       def verify_signature(raw: nil, expected_token: nil, provided_token: nil, **) # rubocop:disable Lint/UnusedMethodArgument
-        return false unless expected_token && provided_token
+        return false unless expected_token.is_a?(String) && provided_token.is_a?(String)
+        return false if expected_token.strip.empty?
         return false unless expected_token.bytesize == provided_token.bytesize
 
         OpenSSL.fixed_length_secure_compare(expected_token, provided_token)

@@ -12,11 +12,11 @@ module Lipwa
       SECRET_NAMES = "authorization|signature|cookie|api[_-]?key|access[_-]?token|" \
                      "refresh[_-]?token|token|consumer[_-]?key|client[_-]?id|" \
                      "secret|password|passkey|" \
-                     "security[_-]?credential|private[_-]?key"
+                     "security[_-]?credential|private[_-]?key|admin[_-]?key|invoice[_-]?key|encryption[_-]?key"
       SENSITIVE_KEY = /(?:#{SECRET_NAMES})/i
       STRING_PATTERNS = [
         /((?:authorization|proxy-authorization|signature)\s*:\s*)[^\r\n,]+/i,
-        /((?:^|[?&])(?:api[_-]?key|access[_-]?token|refresh[_-]?token|token|secret|password|passkey)=)[^&#\s]+/i,
+        /((?:^|[?&])(?:#{SECRET_NAMES})=)[^&#\s]+/i,
         /(["']?(?:#{SECRET_NAMES})["']?\s*[:=]\s*["'])[^"']*(["'])/i
       ].freeze
 

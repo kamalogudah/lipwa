@@ -10,6 +10,12 @@ module Lipwa
         required(:authorization).filled(:string)
         optional(:amount).filled
       end
+
+      rule(:authorization) do
+        unless value.match?(/\A[A-Za-z0-9_.:-]+\z/) && !%w[. ..].include?(value)
+          key.failure("contains unsupported characters")
+        end
+      end
     end
   end
 end

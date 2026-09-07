@@ -35,7 +35,8 @@ module Lipwa
       end
 
       def verify_signature(raw:, authorization:, username:, password:) # rubocop:disable Lint/UnusedMethodArgument
-        return false unless authorization && username && password
+        return false unless authorization.is_a?(String) && username.is_a?(String) && password.is_a?(String)
+        return false if username.strip.empty? || password.strip.empty?
 
         expected = "Basic #{Base64.strict_encode64("#{username}:#{password}")}"
         return false unless authorization.bytesize == expected.bytesize
